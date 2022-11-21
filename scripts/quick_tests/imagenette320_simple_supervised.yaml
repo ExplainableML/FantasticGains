@@ -17,7 +17,7 @@ wandb:
   project: "solo-learn"
 
 # base settings
-name: "supervised_cls-imagenette320"
+name: "supervised_cls-imagenet"
 method: "xent"
 method_kwargs:
   temperature: 0.2
@@ -25,9 +25,9 @@ method_kwargs:
 backbone:
   name: "resnet18"
 data:
-  dataset: imagenette320
-  train_path: "/home/karsten_dl/Dropbox/Projects/Datasets/imagenette2-320/train"
-  val_path: "/home/karsten_dl/Dropbox/Projects/Datasets/imagenette2-320/val"
+  dataset: imagenet
+  train_path: "/home/karsten_dl/Dropbox/Projects/Datasets/imagenet2012/train"
+  val_path: "/home/karsten_dl/Dropbox/Projects/Datasets/imagenet2012/val"
   format: "dali"
   num_workers: 8
 optimizer:

@@ -25,7 +25,7 @@ method_kwargs:
 backbone:
   name: "resnet18"
 data:
-  dataset: imagenette320
+  dataset: imagenet
   train_path: "/mnt/qb/work/akata/kroth32/Datasets/ImageNet2012/train"
   val_path: "/mnt/qb/work/akata/kroth32/Datasets/ImageNet2012/val"
   format: "dali"
