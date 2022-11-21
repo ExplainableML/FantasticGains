@@ -30,7 +30,7 @@ from torch.utils.data.dataset import Dataset
 from torchvision import transforms
 from torchvision.datasets import STL10, ImageFolder
 
-from solo.utils.constants import MEANS_N_STD
+from solo.utils.constants import MEANS_N_STD, IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 try:
     from solo.data.h5_dataset import H5Dataset
 except ImportError:
