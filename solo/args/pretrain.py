@@ -20,6 +20,7 @@ _N_CLASSES_PER_DATASET = {
     "stl10": 10,
     "imagenet": 1000,
     "imagenet100": 100,
+    "imagenette320": 10,
 }
 
 _SUPPORTED_DATASETS = [
@@ -28,6 +29,7 @@ _SUPPORTED_DATASETS = [
     "stl10",
     "imagenet",
     "imagenet100",
+    "imagenette320",
     "custom",
 ]
 
@@ -68,9 +70,12 @@ def add_and_assert_wandb_cfg(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
     """
 
     cfg.wandb = omegaconf_select(cfg, "wandb", {})
+    cfg.wandb.watch_model = omegaconf_select(cfg, "wandb.watch_model", False)
     cfg.wandb.enabled = omegaconf_select(cfg, "wandb.enabled", False)
     cfg.wandb.entity = omegaconf_select(cfg, "wandb.entity", None)
     cfg.wandb.project = omegaconf_select(cfg, "wandb.project", "solo-learn")
+    cfg.wandb.group = omegaconf_select(cfg, "wandb.group", "default-group")
+    cfg.wandb.autogroup = omegaconf_select(cfg, "wandb.autogroup", False)
     cfg.wandb.offline = omegaconf_select(cfg, "wandb.offline", False)
 
     return cfg
@@ -139,7 +144,7 @@ def parse_cfg(cfg: omegaconf.DictConfig):
     cfg.data.num_small_crops = num_small_crops
 
     if cfg.data.format == "dali":
-        assert cfg.data.dataset in ["imagenet100", "imagenet", "custom"]
+        assert cfg.data.dataset in ["imagenet100", "imagenet", "imagenette320", "custom"]
 
     # adjust lr according to batch size
     cfg.num_nodes = omegaconf_select(cfg, "num_nodes", 1)

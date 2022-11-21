@@ -460,7 +460,6 @@ class BaseMethod(pl.LightningModule):
 
         out = self(X)
         logits = out["logits"]
-
         loss = F.cross_entropy(logits, targets, ignore_index=-1)
         # handle when the number of classes is smaller than 5
         top_k_max = min(5, logits.size(1))
@@ -497,7 +496,10 @@ class BaseMethod(pl.LightningModule):
             Dict[str, Any]: dict with the classification loss, features and logits.
         """
 
-        _, X, targets = batch
+        if self.cfg.data.format == 'ffcv':
+            X, targets, _ = batch
+        else:
+            _, X, targets = batch
 
         X = [X] if isinstance(X, torch.Tensor) else X
 
@@ -506,13 +508,13 @@ class BaseMethod(pl.LightningModule):
 
         outs = [self.base_training_step(x, targets) for x in X[: self.num_large_crops]]
         outs = {k: [out[k] for out in outs] for k in outs[0].keys()}
-
+        
         if self.multicrop:
             multicrop_outs = [self.multicrop_forward(x) for x in X[self.num_large_crops :]]
             for k in multicrop_outs[0].keys():
                 outs[k] = outs.get(k, []) + [out[k] for out in multicrop_outs]
 
-        # loss and stats
+        # loss and stats       
         outs["loss"] = sum(outs["loss"]) / self.num_large_crops
         outs["acc1"] = sum(outs["acc1"]) / self.num_large_crops
         outs["acc5"] = sum(outs["acc5"]) / self.num_large_crops
@@ -563,9 +565,15 @@ class BaseMethod(pl.LightningModule):
         Returns:
             Dict[str, Any]: dict with the batch_size (used for averaging), the classification loss
                 and accuracies.
-        """
-
-        X, targets = batch
+        """   
+        # In some cases, the validation dataloader may also return image indices.             
+        if len(batch) == 3:
+            if self.cfg.data.format == 'ffcv':
+                X, targets, _ = batch
+            else:
+                _, X, targets = batch
+        else:
+            X, targets = batch
         batch_size = targets.size(0)
 
         out = self.base_validation_step(X, targets)
@@ -602,6 +610,8 @@ class BaseMethod(pl.LightningModule):
 
         self.log_dict(log, sync_dist=True)
 
+        val_str = ' | '.join('{0}: {1:4.5f}'.format(key, item) for key, item in log.items())
+        print('\n--- Validation results:\n' + val_str + '\n')
 
 class BaseMomentumMethod(BaseMethod):
     def __init__(
@@ -762,7 +772,11 @@ class BaseMomentumMethod(BaseMethod):
 
         outs = super().training_step(batch, batch_idx)
 
-        _, X, targets = batch
+        if self.cfg.data.format == 'ffcv':
+            X, targets, _ = batch
+        else:
+            _, X, targets = batch
+
         X = [X] if isinstance(X, torch.Tensor) else X
 
         # remove small crops
@@ -840,7 +854,14 @@ class BaseMomentumMethod(BaseMethod):
 
         parent_metrics = super().validation_step(batch, batch_idx)
 
-        X, targets = batch
+        # In some cases, the validation dataloader may also return image indices.
+        if len(batch) == 3:
+            if self.cfg.data.format == 'ffcv':
+                X, targets, _ = batch
+            else:
+                _, X, targets = batch
+        else:
+            X, targets = batch
         batch_size = targets.size(0)
 
         out = self._shared_step_momentum(X, targets)

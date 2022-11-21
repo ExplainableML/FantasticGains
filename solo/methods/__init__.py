@@ -37,12 +37,16 @@ from solo.methods.swav import SwAV
 from solo.methods.vibcreg import VIbCReg
 from solo.methods.vicreg import VICReg
 from solo.methods.wmse import WMSE
+from solo.methods.xent import XEnt
 
 METHODS = {
     # base classes
     "base": BaseMethod,
     "linear": LinearModel,
-    # methods
+    # supervised methods.
+    "xent": XEnt,
+    "supcon": SupCon,    
+    # self-supervised methods    
     "barlow_twins": BarlowTwins,
     "byol": BYOL,
     "deepclusterv2": DeepClusterV2,
@@ -56,7 +60,6 @@ METHODS = {
     "ressl": ReSSL,
     "simclr": SimCLR,
     "simsiam": SimSiam,
-    "supcon": SupCon,
     "swav": SwAV,
     "vibcreg": VIbCReg,
     "vicreg": VICReg,
@@ -83,4 +86,5 @@ __all__ = [
     "VIbCReg",
     "VICReg",
     "WMSE",
+    "XEnt",
 ]

@@ -32,9 +32,8 @@ import torch
 import torch.nn as nn
 from nvidia.dali.pipeline import pipeline_def
 from nvidia.dali.plugin.pytorch import DALIGenericIterator, LastBatchPolicy
+from solo.utils.constants import MEANS_N_STD, IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from solo.utils.misc import omegaconf_select
-from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-
 
 class Mux:
     def __init__(self, prob: float):
@@ -360,14 +359,6 @@ def build_transform_pipeline_dali(dataset, cfg, dali_device):
         horizontal_flip:
             prob: float
     """
-
-    MEANS_N_STD = {
-        "cifar10": ((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616)),
-        "cifar100": ((0.5071, 0.4865, 0.4409), (0.2673, 0.2564, 0.2762)),
-        "stl10": ((0.4914, 0.4823, 0.4466), (0.247, 0.243, 0.261)),
-        "imagenet100": (IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
-        "imagenet": (IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
-    }
 
     mean, std = MEANS_N_STD.get(
         dataset, (cfg.get("mean", IMAGENET_DEFAULT_MEAN), cfg.get("std", IMAGENET_DEFAULT_STD))
@@ -883,12 +874,12 @@ class ClassificationDALIDataModule(pl.LightningDataModule):
         assert dali_device in ["gpu", "cpu"]
 
         # handle custom data by creating the needed pipeline
-        if dataset in ["imagenet100", "imagenet"]:
+        if dataset in ["imagenet100", "imagenet", "imagenette320"]:
             self.pipeline_class = NormalPipelineBuilder
         elif dataset == "custom":
             self.pipeline_class = CustomNormalPipelineBuilder
         else:
-            raise ValueError(dataset, "is not supported, used [imagenet, imagenet100 or custom]")
+            raise ValueError(dataset, "is not supported, used [imagenet, imagenet100, imagenette320 or custom]")
 
     @staticmethod
     def add_and_assert_specific_cfg(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:

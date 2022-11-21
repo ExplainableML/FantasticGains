@@ -25,12 +25,12 @@ from typing import Callable, List, Optional, Sequence, Type, Union
 import torch
 import torchvision
 from PIL import Image, ImageFilter, ImageOps
-from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset
 from torchvision import transforms
 from torchvision.datasets import STL10, ImageFolder
 
+from solo.utils.constants import MEANS_N_STD
 try:
     from solo.data.h5_dataset import H5Dataset
 except ImportError:
@@ -203,13 +203,14 @@ def build_transform_pipeline(dataset, cfg):
             prob: float
     """
 
-    MEANS_N_STD = {
-        "cifar10": ((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616)),
-        "cifar100": ((0.5071, 0.4865, 0.4409), (0.2673, 0.2564, 0.2762)),
-        "stl10": ((0.4914, 0.4823, 0.4466), (0.247, 0.243, 0.261)),
-        "imagenet100": (IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
-        "imagenet": (IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
-    }
+    # MEANS_N_STD = {
+    #     "cifar10": ((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616)),
+    #     "cifar100": ((0.5071, 0.4865, 0.4409), (0.2673, 0.2564, 0.2762)),
+    #     "stl10": ((0.4914, 0.4823, 0.4466), (0.247, 0.243, 0.261)),
+    #     "imagenette320": (IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
+    #     "imagenet100": (IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
+    #     "imagenet": (IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
+    # }
 
     mean, std = MEANS_N_STD.get(
         dataset, (cfg.get("mean", IMAGENET_DEFAULT_MEAN), cfg.get("std", IMAGENET_DEFAULT_STD))
@@ -335,7 +336,7 @@ def prepare_datasets(
             transform=transform,
         )
 
-    elif dataset in ["imagenet", "imagenet100"]:
+    elif dataset in ["imagenet", "imagenet100", 'imagenette320']:
         if data_format == "h5":
             assert _h5_available
             train_dataset = dataset_with_index(H5Dataset)(dataset, train_data_path, transform)

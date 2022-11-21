@@ -7,6 +7,8 @@ lightning-bolts>=0.5.0
 tqdm
 wandb
 scipy
+terminaltables
 timm
 scikit-learn
 hydra-core
+termcolor

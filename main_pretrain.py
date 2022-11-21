@@ -70,7 +70,7 @@ def main(cfg: DictConfig):
     assert cfg.method in METHODS, f"Choose from {METHODS.keys()}"
 
     if cfg.data.num_large_crops != 2:
-        assert cfg.method in ["wmse", "mae"]
+        assert cfg.method in ["wmse", "mae", "xent"]
 
     model = METHODS[cfg.method](cfg)
     make_contiguous(model)
@@ -81,22 +81,81 @@ def main(cfg: DictConfig):
     # validation dataloader for when it is available
     if cfg.data.dataset == "custom" and (cfg.data.no_labels or cfg.data.val_path is None):
         val_loader = None
-    elif cfg.data.dataset in ["imagenet100", "imagenet"] and cfg.data.val_path is None:
+    elif cfg.data.dataset in ["imagenette320", "imagenet100", "imagenet"] and cfg.data.val_path is None:
         val_loader = None
     else:
-        if cfg.data.format == "dali":
-            val_data_format = "image_folder"
-        else:
-            val_data_format = cfg.data.format
+        if cfg.data.format != 'ffcv':
+            if cfg.data.format == "dali":
+                val_data_format = "image_folder"
+            else:
+                val_data_format = cfg.data.format
 
-        _, val_loader = prepare_data_classification(
-            cfg.data.dataset,
-            train_data_path=cfg.data.train_path,
-            val_data_path=cfg.data.val_path,
-            data_format=val_data_format,
-            batch_size=cfg.optimizer.batch_size,
-            num_workers=cfg.data.num_workers,
-        )
+            _, val_loader = prepare_data_classification(
+                cfg.data.dataset,
+                train_data_path=cfg.data.train_path,
+                val_data_path=cfg.data.val_path,
+                data_format=val_data_format,
+                batch_size=cfg.optimizer.batch_size,
+                num_workers=cfg.data.num_workers,
+            )
+        else:
+            import solo.utils.constants
+            import solo.ffcv_transforms
+            
+            import ffcv
+            from ffcv.fields.rgb_image import CenterCropRGBImageDecoder, RandomResizedCropRGBImageDecoder
+            from ffcv.loader import OrderOption
+            import numpy as np
+            
+            mean, std = solo.utils.constants.FFCV_MEANS_N_STD.get(cfg.data.dataset)
+            res = cfg.augmentations[0]['crop_size']
+            decoder = ffcv.fields.rgb_image.CenterCropRGBImageDecoder(
+                (res, res), ratio=solo.utils.constants.DEFAULT_CROP_RATIO)
+            order = OrderOption.SEQUENTIAL
+            device = torch.device('cuda')
+        
+            image_pipeline, label_pipeline, index_pipeline = [decoder], [], []
+            image_pipeline.extend(solo.ffcv_transforms.provide([
+                'RandomHorizontalFlip_{"p":0.5}',
+                'RandomColorDistortion_{"p":0.8,"strength":0.5}',
+                'RandomGrayscale_{"p":0.2}',
+                'RandomSolarization_{"p":0.2}'                
+            ]))
+            image_pipeline.extend([
+                ffcv.transforms.ToTensor(),
+                ffcv.transforms.ToDevice(device, non_blocking=True),
+                ffcv.transforms.ToTorchImage(),
+                ffcv.transforms.NormalizeImage(np.array(mean), np.array(std), np.float16)
+            ])
+
+            label_pipeline.extend([
+                ffcv.fields.basics.IntDecoder(),
+                ffcv.transforms.ToTensor(),
+                ffcv.transforms.Squeeze(),
+                ffcv.transforms.ToDevice(device, non_blocking=True)
+            ])
+
+            index_pipeline.extend([
+                ffcv.fields.basics.IntDecoder(),
+                ffcv.transforms.ToTensor(),
+                ffcv.transforms.Squeeze(),
+                ffcv.transforms.ToDevice(device, non_blocking=True)
+            ])
+
+            pipeline = {'image': image_pipeline, 'label': label_pipeline, 'index': index_pipeline}
+
+            val_loader = ffcv.loader.Loader(
+                '/home/karsten_dl/Dropbox/Projects/Datasets/ffcv_imagenette320/val_320_0.50_90.ffcv',
+                batch_size=cfg.optimizer.batch_size,
+                num_workers=cfg.data.num_workers,
+                order=order,
+                os_cache=False,
+                drop_last=False,
+                pipelines=pipeline,
+                distributed=False,
+                # distributed=cfg.strategy=='ddp',
+                seed=0
+            )
 
     # pretrain dataloader
     if cfg.data.format == "dali":
@@ -129,6 +188,85 @@ def main(cfg: DictConfig):
             encode_indexes_into_labels=cfg.dali.encode_indexes_into_labels,
         )
         dali_datamodule.val_dataloader = lambda: val_loader
+    elif cfg.data.format == "ffcv":
+        assert_str = f"The dataset {cfg.data.dataset} unfortunately is not ffcv-compatible."
+        assert cfg.data.dataset in ['imagenette320', 'imagenet100', 'imagenet', 'cifar10', 'cifar100'], assert_str
+        
+        import solo.utils.constants
+        import solo.ffcv_transforms
+        
+        import ffcv
+        from ffcv.fields.rgb_image import CenterCropRGBImageDecoder, RandomResizedCropRGBImageDecoder
+        from ffcv.loader import OrderOption
+        import numpy as np
+        
+        mean, std = solo.utils.constants.FFCV_MEANS_N_STD.get(cfg.data.dataset)
+
+        res = cfg.augmentations[0]['crop_size']
+        num_loaders = cfg.augmentations[0]['num_crops']
+    
+        decoder = ffcv.fields.rgb_image.RandomResizedCropRGBImageDecoder((res, res))
+        if cfg.strategy == 'ddp':
+            order = OrderOption.RANDOM
+        else:
+            order = OrderOption.QUASI_RANDOM
+
+        device = torch.device('cuda')
+        
+        train_loaders = []
+
+        # os.environ['MASTER_ADDR'] = address
+        # os.environ['MASTER_PORT'] = port
+
+        # torch.distributed.init_process_group(
+        #     "nccl", rank=self.base_gpu, world_size=world_size)
+        # torch.cuda.set_device(self.base_gpu)
+                
+        for _ in range(num_loaders):
+            image_pipeline, label_pipeline, index_pipeline = [decoder], [], []
+            image_pipeline.extend(solo.ffcv_transforms.provide([
+                'RandomHorizontalFlip_{"p":0.5}',
+                'RandomColorDistortion_{"p":0.8,"strength":0.5}',
+                'RandomGrayscale_{"p":0.2}',
+                'RandomSolarization_{"p":0.2}'                
+            ]))
+            image_pipeline.extend([
+                ffcv.transforms.ToTensor(),
+                ffcv.transforms.ToDevice(device, non_blocking=True),
+                ffcv.transforms.ToTorchImage(),
+                ffcv.transforms.NormalizeImage(np.array(mean), np.array(std), np.float16)
+            ])
+
+            label_pipeline.extend([
+                ffcv.fields.basics.IntDecoder(),
+                ffcv.transforms.ToTensor(),
+                ffcv.transforms.Squeeze(),
+                ffcv.transforms.ToDevice(device, non_blocking=True)
+            ])
+
+            index_pipeline.extend([
+                ffcv.fields.basics.IntDecoder(),
+                ffcv.transforms.ToTensor(),
+                ffcv.transforms.Squeeze(),
+                ffcv.transforms.ToDevice(device, non_blocking=True)
+            ])
+
+            pipeline = {'image': image_pipeline, 'label': label_pipeline, 'index': index_pipeline}
+
+            data_loader = ffcv.loader.Loader(
+                '/home/karsten_dl/Dropbox/Projects/Datasets/ffcv_imagenette320/train_320_0.50_90.ffcv',
+                batch_size=cfg.optimizer.batch_size,
+                num_workers=cfg.data.num_workers,
+                order=order,
+                os_cache=False,
+                drop_last=False,
+                pipelines=pipeline,
+                distributed=False,
+                # distributed=cfg.strategy=='ddp',
+                seed=0
+            )
+            train_loaders.append(data_loader)
+        train_loader = train_loaders[0]
     else:
         pipelines = []
         for aug_cfg in cfg.augmentations:
@@ -207,7 +345,8 @@ def main(cfg: DictConfig):
             resume="allow" if wandb_run_id else None,
             id=wandb_run_id,
         )
-        wandb_logger.watch(model, log="gradients", log_freq=100)
+        if cfg.wandb.watch_model:
+            wandb_logger.watch(model, log="gradients", log_freq=100)
         wandb_logger.log_hyperparams(OmegaConf.to_container(cfg))
 
         # lr logging
@@ -230,6 +369,8 @@ def main(cfg: DictConfig):
     )
     trainer = Trainer(**trainer_kwargs)
 
+    # print(OmegaConf.to_yaml(cfg))
+    
     # fix for incompatibility with nvidia-dali and pytorch lightning
     # with dali 1.15 (this will be fixed on 1.16)
     # https://github.com/Lightning-AI/lightning/issues/12956
