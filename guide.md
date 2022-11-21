@@ -90,7 +90,10 @@ __Models:__ `trained_models/simclr/run_handle`, containing the `args.json` file 
 
 ### Todos
 * [X] Print validation results
-* [ ] Load ffcv dataloader.
+* [X] Load ffcv dataloader.
+* [ ] Prepare symbolic dataset links for ImageNet, ImageNet100.
+* [ ] Create FFCV ImageNet
+* [ ] Check speeds on cluster.
 * [ ] Restructure ffcv dataloader to give idx, [img], target. Adjust `base.py` > `training/validation_step()`.
 * [ ] How to resume Checkpointing.
 * [ ] Load VISSL checkpoints.
