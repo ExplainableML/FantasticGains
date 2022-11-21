@@ -26,8 +26,8 @@ backbone:
   name: "resnet18"
 data:
   dataset: imagenette320
-  train_path: $WORK/Datasets/ImageNet2012/train
-  val_path: $WORK/Datasets/ImageNet2012/val
+  train_path: "/mnt/qb/work/akata/kroth32/Datasets/ImageNet2012/train"
+  val_path: "/mnt/qb/work/akata/kroth32/Datasets/ImageNet2012/val"
   format: "dali"
   num_workers: 8
 optimizer:
