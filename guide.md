@@ -40,6 +40,8 @@ python main_pretrain.py --config-path scripts/quick_tests/ --config-name imagene
 ```
 Here, we leverage the fact that the BaseMethod already includes a supervised CE classification training objective, that is simply overwritten by other objectives that inherit from it. The number of classes is derived automatically if the datasets follows the standard dataset structure (train/classes, val/classes), but can also be passed via `++data.num_classes=N`.
 
+python main_pretrain.py --config-path scripts/quick_tests/ --config-name supervised_imagenet_check.yaml ++wandb.enabled=False ++data.format="default" ++strategy="dp"
+
 __NOTE:__ A simple linear probe is trained online jointly during training on the detached features to allow for fast computation of probing scores! In general, there is a strong relation between online and offline probing scores!
 
 
@@ -87,12 +89,12 @@ __Models:__ `trained_models/simclr/run_handle`, containing the `args.json` file 
 
 ### Where is the main training happening?
 
-
 ### Todos
 * [X] Print validation results
 * [X] Load ffcv dataloader.
 * [ ] Prepare symbolic dataset links for ImageNet, ImageNet100.
 * [ ] Create FFCV ImageNet
+* [ ] Log learning rates.
 * [ ] Check speeds on cluster.
 * [ ] Restructure ffcv dataloader to give idx, [img], target. Adjust `base.py` > `training/validation_step()`.
 * [ ] How to resume Checkpointing.

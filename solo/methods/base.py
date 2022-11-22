@@ -610,7 +610,8 @@ class BaseMethod(pl.LightningModule):
 
         self.log_dict(log, sync_dist=True)
 
-        val_str = ' | '.join('{0}: {1:4.5f}'.format(key, item) for key, item in log.items())
+        val_str = ' | '.join('{0}: {1:4.5f}'.format(key, item.mean().item()) for key, item in log.items())
+            
         print('\n--- Validation results:\n' + val_str + '\n')
 
 class BaseMomentumMethod(BaseMethod):

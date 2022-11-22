@@ -15,6 +15,6 @@ MEANS_N_STD = {
     "imagenet100": (IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
     "imagenet": (IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD),
 }
-FFCV_MEANS_N_STD = {key: (tuple(np.array(x) * 256) for x in item) for key, item in MEANS_N_STD.items()}
+FFCV_MEANS_N_STD = {key: tuple(tuple(np.array(x) * 256) for x in item) for key, item in MEANS_N_STD.items()}
 
 DEFAULT_CROP_RATIO = 224/256

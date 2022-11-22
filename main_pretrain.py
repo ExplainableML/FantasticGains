@@ -204,7 +204,6 @@ def main(cfg: DictConfig):
 
         res = cfg.augmentations[0]['crop_size']
         num_loaders = cfg.augmentations[0]['num_crops']
-    
         decoder = ffcv.fields.rgb_image.RandomResizedCropRGBImageDecoder((res, res))
         if cfg.strategy == 'ddp':
             order = OrderOption.RANDOM
