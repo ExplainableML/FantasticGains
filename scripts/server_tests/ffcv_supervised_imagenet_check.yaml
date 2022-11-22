@@ -27,7 +27,7 @@ backbone:
 data:
   dataset: imagenet
   train_path: "/mnt/qb/work/akata/kroth32/Datasets/ffcv_imagenet2012/train_500_0.50_90.ffcv"
-  val_path: "/mnt/qb/work/akata/kroth32/Datasets/ImageNet2012/val_500_0.50_90.ffcv"
+  val_path: "/mnt/qb/work/akata/kroth32/Datasets/ffcv_imagenet2012/val_500_0.50_90.ffcv"
   format: "ffcv"
   num_workers: 8
 optimizer:
