@@ -14,10 +14,10 @@ hydra:
 # wandb project settings
 wandb:
   enabled: True
-  project: "repsssl_server_tests"
+  project: "solo-learn"
 
 # base settings
-name: "supervised_cls-imagenet2012"
+name: "supervised_cls-imagenet"
 method: "xent"
 method_kwargs:
   temperature: 0.2
@@ -26,13 +26,13 @@ backbone:
   name: "resnet18"
 data:
   dataset: imagenet
-  train_path: "/mnt/qb/work/akata/kroth32/Datasets/ImageNet2012/train"
-  val_path: "/mnt/qb/work/akata/kroth32/Datasets/ImageNet2012/val"
-  format: "default"
+  train_path: "/home/karsten_dl/Dropbox/Projects/Datasets/ffcv_imagenet2012/train_500_0.50_90.ffcv"
+  val_path: "/home/karsten_dl/Dropbox/Projects/Datasets/ffcv_imagenet2012/val_500_0.50_90.ffcv"
+  format: "dali"
   num_workers: 8
 optimizer:
   name: "lars"
-  batch_size: 32
+  batch_size: 128
   lr: 0.3
   classifier_lr: 0.1
   weight_decay: 1e-4
