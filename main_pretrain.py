@@ -145,7 +145,7 @@ def main(cfg: DictConfig):
             pipeline = {'image': image_pipeline, 'label': label_pipeline, 'index': index_pipeline}
 
             val_loader = ffcv.loader.Loader(
-                '/home/karsten_dl/Dropbox/Projects/Datasets/ffcv_imagenette320/val_320_0.50_90.ffcv',
+                cfg.data.val_path,
                 batch_size=cfg.optimizer.batch_size,
                 num_workers=cfg.data.num_workers,
                 order=order,
@@ -253,7 +253,7 @@ def main(cfg: DictConfig):
             pipeline = {'image': image_pipeline, 'label': label_pipeline, 'index': index_pipeline}
 
             data_loader = ffcv.loader.Loader(
-                '/home/karsten_dl/Dropbox/Projects/Datasets/ffcv_imagenette320/train_320_0.50_90.ffcv',
+                cfg.data.train_path,
                 batch_size=cfg.optimizer.batch_size,
                 num_workers=cfg.data.num_workers,
                 order=order,
