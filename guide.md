@@ -101,14 +101,20 @@ __Done.__
 * [X] Check seed result replications!
   * Added deterministic flag.
 * [X] Log learning rates.
+* [X] How to resume Checkpointing.
+  * Happens automatically
 
 __Today.__
-* [ ] Replicate SSL baselines on ImageNet100.
-* [ ] Run Supervised SSL baseline on ImageNet100.
+* [ ] Include seed separation.
+* [ ] Run replicate SSL baselines on ImageNet100.
+  * [ ] in process. 
+* [ ] Write results/terminal-output to folder.
+* [ ] Include checkpoints every N epochs.
+* [ ] Include DML runs.
+
 
 __General.__
 * [ ] Restructure ffcv dataloader to give idx, [img], target. Adjust `base.py` > `training/validation_step()`.
-* [ ] How to resume Checkpointing.
 * [ ] Load VISSL checkpoints.
 * [ ] Store metrics & log output.
 * [ ] Check W&B project and group name changes.

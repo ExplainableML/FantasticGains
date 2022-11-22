@@ -294,9 +294,13 @@ def main(cfg: DictConfig):
     # 1.7 will deprecate resume_from_checkpoint, but for the moment
     # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
     ckpt_path, wandb_run_id = None, None
+    # from IPython import embed; embed()
+    checkpoint_path = os.path.join(
+        cfg.checkpoint.dir, cfg.data.dataset, cfg.method, f'seed_{cfg.seed}')
+    
     if cfg.auto_resume.enabled and cfg.resume_from_checkpoint is None:
         auto_resumer = AutoResumer(
-            checkpoint_dir=os.path.join(cfg.checkpoint.dir, cfg.method),
+            checkpoint_dir=checkpoint_path,
             max_hours=cfg.auto_resume.max_hours,
         )
         resume_from_checkpoint, wandb_run_id = auto_resumer.find_checkpoint(cfg)
@@ -316,7 +320,7 @@ def main(cfg: DictConfig):
         # save checkpoint on last epoch only
         ckpt = Checkpointer(
             cfg,
-            logdir=os.path.join(cfg.checkpoint.dir, cfg.method),
+            logdir=checkpoint_path,
             frequency=cfg.checkpoint.frequency,
             keep_prev=cfg.checkpoint.keep_prev,
         )
