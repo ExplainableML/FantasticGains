@@ -66,7 +66,6 @@ def main(cfg: DictConfig):
     cfg = parse_cfg(cfg)
 
     seed_everything(cfg.seed)
-
     assert cfg.method in METHODS, f"Choose from {METHODS.keys()}"
 
     if cfg.data.num_large_crops != 2:
@@ -364,10 +363,11 @@ def main(cfg: DictConfig):
             "strategy": DDPStrategy(find_unused_parameters=False)
             if cfg.strategy == "ddp"
             else cfg.strategy,
+            'deterministic': cfg.deterministic
         }
     )
     trainer = Trainer(**trainer_kwargs)
-
+    
     # print(OmegaConf.to_yaml(cfg))
     
     # fix for incompatibility with nvidia-dali and pytorch lightning
@@ -386,7 +386,7 @@ def main(cfg: DictConfig):
         )
     except:
         pass
-
+    
     if cfg.data.format == "dali":
         trainer.fit(model, ckpt_path=ckpt_path, datamodule=dali_datamodule)
     else:

@@ -26,8 +26,8 @@ data:
   dataset: imagenet100
   train_path: "/mnt/qb/work/akata/kroth32/Datasets/imagenet-100/train"
   val_path: "/mnt/qb/work/akata/kroth32/Datasets/imagenet-100/val"
-  format: "default"
-  num_workers: 8
+  format: "dali"
+  num_workers: 16
 optimizer:
   name: "lars"
   batch_size: 128
@@ -54,3 +54,4 @@ sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"
 precision: 16
+seed: 0

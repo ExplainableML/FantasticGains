@@ -91,7 +91,8 @@ def add_and_assert_lightning_cfg(cfg: omegaconf.DictConfig) -> omegaconf.DictCon
         omegaconf.DictConfig: same as the argument, used to avoid errors.
     """
 
-    cfg.seed = omegaconf_select(cfg, "seed", 5)
+    cfg.seed = omegaconf_select(cfg, "seed", 0)
+    cfg.deterministic = omegaconf_select(cfg, "deterministic", True)
     cfg.resume_from_checkpoint = omegaconf_select(cfg, "resume_from_checkpoint", None)
     cfg.strategy = omegaconf_select(cfg, "strategy", None)
 

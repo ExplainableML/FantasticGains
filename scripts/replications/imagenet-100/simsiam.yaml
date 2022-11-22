@@ -24,8 +24,8 @@ data:
   dataset: imagenet100
   train_path: "/mnt/qb/work/akata/kroth32/Datasets/imagenet-100/train"
   val_path: "/mnt/qb/work/akata/kroth32/Datasets/imagenet-100/val"
-  format: "default"
-  num_workers: 8
+  format: "dali"
+  num_workers: 16
 optimizer:
   name: "sgd"
   batch_size: 128
@@ -42,6 +42,7 @@ auto_resume:
   enabled: True
 augmentations_cfg: "scripts/configs/defaults/augmentations/symmetric/weak.yaml"
 wandb_cfg: "scripts/configs/defaults/wandb/private.yaml"
+
 # overwrite PL stuff
 max_epochs: 400
 devices: [0, 1]
@@ -49,3 +50,4 @@ sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"
 precision: 16
+seed: 0

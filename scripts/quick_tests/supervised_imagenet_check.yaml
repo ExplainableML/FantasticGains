@@ -26,8 +26,8 @@ backbone:
   name: "resnet18"
 data:
   dataset: imagenette320
-  train_path: "/home/karsten_dl/Dropbox/Projects/Datasets/ffcv_imagenette320/train"
-  val_path: "/home/karsten_dl/Dropbox/Projects/Datasets/ffcv_imagenette320/val"
+  train_path: "/home/karsten_dl/Dropbox/Projects/Datasets/imagenette2-320/train"
+  val_path: "/home/karsten_dl/Dropbox/Projects/Datasets/imagenette2-320/val"
   format: "dali"
   num_workers: 8
 optimizer:

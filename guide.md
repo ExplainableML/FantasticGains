@@ -90,12 +90,23 @@ __Models:__ `trained_models/simclr/run_handle`, containing the `args.json` file 
 ### Where is the main training happening?
 
 ### Todos
+__Done.__
 * [X] Print validation results
 * [X] Load ffcv dataloader.
-* [ ] Prepare symbolic dataset links for ImageNet, ImageNet100.
-* [ ] Create FFCV ImageNet
-* [ ] Log learning rates.
-* [ ] Check speeds on cluster.
+* [X] Prepare symbolic dataset links for ImageNet, ImageNet100.
+* [X] Create FFCV ImageNet
+* [X] Check speeds on cluster.
+  * Result: FFCV gives little benefits?
+* [X] Print only on main process
+* [X] Check seed result replications!
+  * Added deterministic flag.
+* [X] Log learning rates.
+
+__Today.__
+* [ ] Replicate SSL baselines on ImageNet100.
+* [ ] Run Supervised SSL baseline on ImageNet100.
+
+__General.__
 * [ ] Restructure ffcv dataloader to give idx, [img], target. Adjust `base.py` > `training/validation_step()`.
 * [ ] How to resume Checkpointing.
 * [ ] Load VISSL checkpoints.
@@ -103,5 +114,7 @@ __Models:__ `trained_models/simclr/run_handle`, containing the `args.json` file 
 * [ ] Check W&B project and group name changes.
 * [ ] "Failed to sample/serialize metric" error.
 * [ ] Train supervised model & compare to ffcv.
-* [ ] Incorporate ffcv variant.
 * [ ] Loading and evaluating trained models.
+
+### Replications
+Runs in `scripts/replications/imagenet-100`.
