@@ -120,7 +120,7 @@ class VICReg(BaseMethod):
         out.update({"z": z})
         return out
 
-    def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: Dict[int, Sequence[Any]], batch_idx: int) -> torch.Tensor:
         """Training step for VICReg reusing BaseMethod training step.
 
         Args:
@@ -132,6 +132,7 @@ class VICReg(BaseMethod):
             torch.Tensor: total loss composed of VICReg loss and classification loss.
         """
 
+        batch = super().prepare_batch(batch)
         out = super().training_step(batch, batch_idx)
         class_loss = out["loss"]
         z1, z2 = out["z"]

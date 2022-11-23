@@ -161,7 +161,7 @@ class MoCoV2Plus(BaseMomentumMethod):
         out.update({"z": z})
         return out
 
-    def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: Dict[int, Sequence[Any]], batch_idx: int) -> torch.Tensor:
         """
         Training step for MoCo V2+ reusing BaseMomentumMethod training step.
 
@@ -176,6 +176,7 @@ class MoCoV2Plus(BaseMomentumMethod):
 
         """
 
+        batch = super().prepare_batch(batch)
         out = super().training_step(batch, batch_idx)
         class_loss = out["loss"]
         q1, q2 = out["z"]

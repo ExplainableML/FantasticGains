@@ -114,7 +114,7 @@ class distriCLR(BaseMethod):
         out.update({"z": z})
         return out
 
-    def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: Dict[int, Sequence[Any]], batch_idx: int) -> torch.Tensor:
         """Training step for SimCLR reusing BaseMethod training step.
 
         Args:
@@ -125,7 +125,9 @@ class distriCLR(BaseMethod):
         Returns:
             torch.Tensor: total loss composed of SimCLR loss and classification loss.
         """
+        
         # ------- loss for auxiliary online classifier -------
+        batch = super().prepare_batch(batch)
         indexes = batch[0]
 
         out = super().training_step(batch, batch_idx)

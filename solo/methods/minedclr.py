@@ -126,6 +126,7 @@ class minedCLR(BaseMethod):
             torch.Tensor: total loss composed of SimCLR loss and classification loss.
         """
 
+        batch = super().prepare_batch(batch)
         indexes = batch[0]
 
         out = super().training_step(batch, batch_idx)

@@ -92,7 +92,6 @@ class SimCLR(BaseMethod):
                 a dict containing the outputs of the parent
                 and the projected features.
         """
-
         out = super().forward(X)
         z = self.projector(out["feats"])
         out.update({"z": z})
@@ -114,18 +113,19 @@ class SimCLR(BaseMethod):
         out.update({"z": z})
         return out
 
-    def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: Dict[int, Sequence[Any]], batch_idx: int) -> torch.Tensor:
         """Training step for SimCLR reusing BaseMethod training step.
 
         Args:
-            batch (Sequence[Any]): a batch of data in the format of [img_indexes, [X], Y], where
-                [X] is a list of size num_crops containing batches of images.
+            batch (Dict[int,Sequence[Any]]): dict comprising a batch of data (or collection thereof if we have multiple dataloaders) in the format of [img_indexes, [X], Y], 
+                where [X] is a list of size num_crops containing batches of images.
             batch_idx (int): index of the batch.
 
         Returns:
             torch.Tensor: total loss composed of SimCLR loss and classification loss.
         """
-
+        
+        batch = super().prepare_batch(batch)
         indexes = batch[0]
 
         out = super().training_step(batch, batch_idx)

@@ -103,9 +103,24 @@ __Done.__
 * [X] Log learning rates.
 * [X] How to resume Checkpointing.
   * Happens automatically
+* [X] Include seed separation.
 
 __Today.__
-* [ ] Include seed separation.
+* [X] FFCV for Self-supervised data.
+* [ ] Convert every method to take in dict of batches!
+* [WIP] Add reduced ImageNet with stronger compression (400, 0.6, 80).
+* [ ] Re-run SSL baselines with FFCV.
+* [ ] Check full ImageNet performance.
+* [ ] Stack multiple partitions (gpu-2080ti > gpu-2080ti-preemptable).
+
+
+* [ ] Data not copied on SCRATCH due to symbolic links?
+* [ ] Kill Issues likely due to memory overflow as training continues (GPU or RAM?).
+* [ ] Check SimSiam recursion depth
+* [ ] Fix MAE & VicReg performance issues
+* [ ] Check Garrido Parameters for SimCLR!
+
+* [ ] Automatically requeue!
 * [ ] Run replicate SSL baselines on ImageNet100.
   * [ ] in process. 
 * [ ] Write results/terminal-output to folder.

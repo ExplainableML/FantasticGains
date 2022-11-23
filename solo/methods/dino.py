@@ -295,7 +295,7 @@ class DINO(BaseMomentumMethod):
         out.update({"z": z})
         return out
 
-    def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: Dict[int, Sequence[Any]], batch_idx: int) -> torch.Tensor:
         """Training step for DINO reusing BaseMomentumMethod training step.
 
         Args:
@@ -307,6 +307,7 @@ class DINO(BaseMomentumMethod):
             torch.Tensor: total loss composed of DINO loss and classification loss.
         """
 
+        batch = super().prepare_batch(batch)
         out = super().training_step(batch, batch_idx)
         class_loss = out["loss"]
         p = torch.cat(out["z"])

@@ -189,7 +189,7 @@ class DeepClusterV2(BaseMethod):
         out.update({"z": z, "p": p})
         return out
 
-    def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: Dict[int, Sequence[Any]], batch_idx: int) -> torch.Tensor:
         """Training step for DeepClusterV2 reusing BaseMethod training step.
 
         Args:
@@ -201,6 +201,7 @@ class DeepClusterV2(BaseMethod):
             torch.Tensor: total loss composed of DeepClusterV2 loss and classification loss.
         """
 
+        batch = super().prepare_batch(batch)
         idxs = batch[0]
 
         out = super().training_step(batch, batch_idx)

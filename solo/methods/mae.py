@@ -229,7 +229,7 @@ class MAE(BaseMethod):
         out.update({"logits": logits, "feats": feats})
         return out
 
-    def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: Dict[int, Sequence[Any]], batch_idx: int) -> torch.Tensor:
         """Training step for MAE reusing BaseMethod training step.
 
         Args:
@@ -241,6 +241,7 @@ class MAE(BaseMethod):
             torch.Tensor: total loss composed of MAE and classification loss.
         """
 
+        batch = super().prepare_batch(batch)
         out = super().training_step(batch, batch_idx)
         class_loss = out["loss"]
 

@@ -118,7 +118,7 @@ class WMSE(BaseMethod):
         out.update({"z": z})
         return out
 
-    def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: Dict[int, Sequence[Any]], batch_idx: int) -> torch.Tensor:
         """Training step for W-MSE reusing BaseMethod training step.
 
         Args:
@@ -130,6 +130,7 @@ class WMSE(BaseMethod):
             torch.Tensor: total loss composed of W-MSE loss and classification loss
         """
 
+        batch = super().prepare_batch(batch)
         out = super().training_step(batch, batch_idx)
         class_loss = out["loss"]
         v = torch.cat(out["z"])

@@ -170,7 +170,7 @@ class NNCLR(BaseMethod):
         out.update({"z": z, "p": p})
         return out
 
-    def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: Dict[int, Sequence[Any]], batch_idx: int) -> torch.Tensor:
         """Training step for NNCLR reusing BaseMethod training step.
 
         Args:
@@ -182,6 +182,7 @@ class NNCLR(BaseMethod):
             torch.Tensor: total loss composed of NNCLR loss and classification loss.
         """
 
+        batch = super().prepare_batch(batch)
         targets = batch[-1]
 
         out = super().training_step(batch, batch_idx)

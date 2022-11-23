@@ -92,7 +92,7 @@ def add_and_assert_lightning_cfg(cfg: omegaconf.DictConfig) -> omegaconf.DictCon
     """
 
     cfg.seed = omegaconf_select(cfg, "seed", 0)
-    cfg.deterministic = omegaconf_select(cfg, "deterministic", True)
+    cfg.deterministic = omegaconf_select(cfg, "deterministic", False)
     cfg.resume_from_checkpoint = omegaconf_select(cfg, "resume_from_checkpoint", None)
     cfg.strategy = omegaconf_select(cfg, "strategy", None)
 

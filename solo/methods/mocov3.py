@@ -192,7 +192,7 @@ class MoCoV3(BaseMomentumMethod):
         out.update({"k": k})
         return out
 
-    def training_step(self, batch: Sequence[Any], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: Dict[int, Sequence[Any]], batch_idx: int) -> torch.Tensor:
         """Training step for MoCo V3 reusing BaseMethod training step.
 
         Args:
@@ -204,6 +204,7 @@ class MoCoV3(BaseMomentumMethod):
             torch.Tensor: total loss composed of MoCo V3 and classification loss.
         """
 
+        batch = super().prepare_batch(batch)
         out = super().training_step(batch, batch_idx)
         class_loss = out["loss"]
         Q = out["q"]

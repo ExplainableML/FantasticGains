@@ -123,10 +123,8 @@ class XEnt(BaseMethod):
             torch.Tensor: total loss composed of the cross entropy loss and classification loss 
                 (to train separate linear probe online).
         """
-        if self.cfg.data.format == 'ffcv':
-            X, targets, _ = batch
-        else:
-            _, X, targets = batch
+        batch = super().prepare(batch)
+        _, X, targets = batch
 
         # ------ train the online linear probe ------
         out = super().training_step(batch, batch_idx)

@@ -483,7 +483,23 @@ class BaseMethod(pl.LightningModule):
 
         return self._base_shared_step(X, targets)
 
-    def training_step(self, batch: List[Any], batch_idx: int) -> Dict[str, Any]:
+    def prepare_batch(self, batch: Union[Dict[int, Sequence[Any]], Sequence[Any]]) -> Sequence[Any]:
+        if self.cfg.data.format == 'ffcv':
+            if isinstance(batch, dict):
+                return [batch[0][-1], [item[0] for item in batch.values()], batch[0][1]] 
+            else:
+                return [batch[-1], batch[0], batch[1]]
+        else:
+            if isinstance(batch, dict):
+                out = [batch[0][0], []]
+                for item in batch.values():
+                    out[1].extend(item[1])
+                out.append(batch[0][-1])
+                return out
+            else:
+                return batch
+
+    def training_step(self, batch: Union[Dict[int, Sequence[Any]], Sequence[Any]], batch_idx: int) -> Dict[str, Any]:
         """Training step for pytorch lightning. It does all the shared operations, such as
         forwarding the crops, computing logits and computing statistics.
 
@@ -495,11 +511,10 @@ class BaseMethod(pl.LightningModule):
         Returns:
             Dict[str, Any]: dict with the classification loss, features and logits.
         """
-
-        if self.cfg.data.format == 'ffcv':
-            X, targets, _ = batch
-        else:
-            _, X, targets = batch
+        if isinstance(batch, dict):
+            batch = self.prepare_batch(batch)
+        
+        _, X, targets = batch
 
         X = [X] if isinstance(X, torch.Tensor) else X
 

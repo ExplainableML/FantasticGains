@@ -211,7 +211,7 @@ def main(cfg: DictConfig):
 
         device = torch.device('cuda')
         
-        train_loaders = []
+        train_loader = []
 
         # os.environ['MASTER_ADDR'] = address
         # os.environ['MASTER_PORT'] = port
@@ -226,7 +226,7 @@ def main(cfg: DictConfig):
                 'RandomHorizontalFlip_{"p":0.5}',
                 'RandomColorDistortion_{"p":0.8,"strength":0.5}',
                 'RandomGrayscale_{"p":0.2}',
-                'RandomSolarization_{"p":0.2}'                
+                'RandomSolarization_{"p":0.2}'
             ]))
             image_pipeline.extend([
                 ffcv.transforms.ToTensor(),
@@ -263,8 +263,8 @@ def main(cfg: DictConfig):
                 # distributed=cfg.strategy=='ddp',
                 seed=0
             )
-            train_loaders.append(data_loader)
-        train_loader = train_loaders[0]
+            train_loader.append(data_loader)
+        train_loader = {i: train_loader for i, train_loader in enumerate(train_loader)}
     else:
         pipelines = []
         for aug_cfg in cfg.augmentations:
@@ -291,6 +291,9 @@ def main(cfg: DictConfig):
             train_dataset, batch_size=cfg.optimizer.batch_size, num_workers=cfg.data.num_workers
         )
 
+    if not isinstance(train_loader, dict):
+        train_loader = {0: train_loader}
+        
     # 1.7 will deprecate resume_from_checkpoint, but for the moment
     # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
     ckpt_path, wandb_run_id = None, None
@@ -395,7 +398,6 @@ def main(cfg: DictConfig):
         trainer.fit(model, ckpt_path=ckpt_path, datamodule=dali_datamodule)
     else:
         trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
-
 
 if __name__ == "__main__":
     main()
