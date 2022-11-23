@@ -148,11 +148,10 @@ def main(cfg: DictConfig):
                 batch_size=cfg.optimizer.batch_size,
                 num_workers=cfg.data.num_workers,
                 order=order,
-                os_cache=False,
+                os_cache=cfg.precache,
                 drop_last=False,
                 pipelines=pipeline,
                 distributed=False,
-                # distributed=cfg.strategy=='ddp',
                 seed=0
             )
 
@@ -256,11 +255,10 @@ def main(cfg: DictConfig):
                 batch_size=cfg.optimizer.batch_size,
                 num_workers=cfg.data.num_workers,
                 order=order,
-                os_cache=False,
-                drop_last=False,
+                os_cache=cfg.precache,
+                drop_last=True,
                 pipelines=pipeline,
                 distributed=False,
-                # distributed=cfg.strategy=='ddp',
                 seed=0
             )
             train_loader.append(data_loader)

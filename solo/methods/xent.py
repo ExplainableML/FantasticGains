@@ -123,7 +123,8 @@ class XEnt(BaseMethod):
             torch.Tensor: total loss composed of the cross entropy loss and classification loss 
                 (to train separate linear probe online).
         """
-        batch = super().prepare(batch)
+        
+        batch = super().prepare_batch(batch)
         _, X, targets = batch
 
         # ------ train the online linear probe ------
