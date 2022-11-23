@@ -291,7 +291,6 @@ def main(cfg: DictConfig):
             train_dataset, batch_size=cfg.optimizer.batch_size, num_workers=cfg.data.num_workers
         )
 
-    if not isinstance(train_loader, dict):
         train_loader = {0: train_loader}
         
     # 1.7 will deprecate resume_from_checkpoint, but for the moment
