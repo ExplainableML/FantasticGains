@@ -143,6 +143,13 @@ def main(cfg: DictConfig):
 
             pipeline = {'image': image_pipeline, 'label': label_pipeline, 'index': index_pipeline}
 
+            if cfg.strategy == "ddp":
+                os.environ['MASTER_ADDR'] = 'localhost'
+                os.environ['MASTER_PORT'] = '12355'
+                torch.distributed.init_process_group(
+                    "nccl", rank=0, world_size=len(cfg.devices))
+                torch.cuda.set_device(0)
+            
             val_loader = ffcv.loader.Loader(
                 cfg.data.val_path,
                 batch_size=cfg.optimizer.batch_size,
@@ -151,7 +158,7 @@ def main(cfg: DictConfig):
                 os_cache=cfg.precache,
                 drop_last=False,
                 pipelines=pipeline,
-                distributed=False,
+                distributed=cfg.strategy=="ddp",
                 seed=0
             )
 
@@ -258,7 +265,7 @@ def main(cfg: DictConfig):
                 os_cache=cfg.precache,
                 drop_last=True,
                 pipelines=pipeline,
-                distributed=False,
+                distributed=cfg.strategy=="ddp",
                 seed=0
             )
             train_loader.append(data_loader)
