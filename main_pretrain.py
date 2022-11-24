@@ -208,7 +208,7 @@ def main(cfg: DictConfig):
         mean, std = solo.utils.constants.FFCV_MEANS_N_STD.get(cfg.data.dataset)
 
         res = cfg.augmentations[0]['crop_size']
-        num_loaders = cfg.augmentations[0]['num_crops']
+        num_loaders = sum([aug_list['num_crops'] for aug_list in cfg.augmentations])
         decoder = ffcv.fields.rgb_image.RandomResizedCropRGBImageDecoder((res, res))
         if cfg.strategy == 'ddp':
             order = OrderOption.RANDOM
@@ -269,7 +269,7 @@ def main(cfg: DictConfig):
                 seed=0
             )
             train_loader.append(data_loader)
-        train_loader = {i: train_loader for i, train_loader in enumerate(train_loader)}
+        train_loader = {i: x for i, x in enumerate(train_loader)}
     else:
         pipelines = []
         for aug_cfg in cfg.augmentations:

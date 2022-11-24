@@ -486,15 +486,18 @@ class BaseMethod(pl.LightningModule):
     def prepare_batch(self, batch: Union[Dict[int, Sequence[Any]], Sequence[Any]]) -> Sequence[Any]:
         if self.cfg.data.format == 'ffcv':
             if isinstance(batch, dict):
-                return [batch[0][-1], [item[0] for item in batch.values()], batch[0][1]] 
+                indices = batch[0][-1].clone()
+                X = [item[0] for item in batch.values()]
+                targets = batch[0][1].clone()
+                return indices, X, targets
             else:
-                return [batch[-1], batch[0], batch[1]]
+                return [batch[-1].clone(), batch[0], batch[1].clone()]
         else:
             if isinstance(batch, dict):
-                out = [batch[0][0], []]
+                out = [batch[0][0].clone(), []]
                 for item in batch.values():
                     out[1].extend(item[1])
-                out.append(batch[0][-1])
+                out.append(batch[0][-1].clone())
                 return out
             else:
                 return batch
@@ -525,7 +528,7 @@ class BaseMethod(pl.LightningModule):
         outs = {k: [out[k] for out in outs] for k in outs[0].keys()}
         
         if self.multicrop:
-            multicrop_outs = [self.multicrop_forward(x) for x in X[self.num_large_crops :]]
+            multicrop_outs = [self.multicrop_forward(x) for x in X[self.num_large_crops:]]
             for k in multicrop_outs[0].keys():
                 outs[k] = outs.get(k, []) + [out[k] for out in multicrop_outs]
 
@@ -628,6 +631,8 @@ class BaseMethod(pl.LightningModule):
         if self.trainer.is_global_zero:
             val_str = ' | '.join('{0}: {1:4.5f}'.format(key, item.mean().item()) for key, item in log.items())
             print('\n--- Validation results:\n' + val_str + '\n')
+
+
 
 class BaseMomentumMethod(BaseMethod):
     def __init__(
@@ -772,7 +777,7 @@ class BaseMomentumMethod(BaseMethod):
 
         return out
 
-    def training_step(self, batch: List[Any], batch_idx: int) -> Dict[str, Any]:
+    def training_step(self, batch: Union[Dict[int, Sequence[Any]], Sequence[Any]], batch_idx: int) -> Dict[str, Any]:
         """Training step for pytorch lightning. It performs all the shared operations for the
         momentum backbone and classifier, such as forwarding the crops in the momentum backbone
         and classifier, and computing statistics.
@@ -785,14 +790,13 @@ class BaseMomentumMethod(BaseMethod):
             Dict[str, Any]: a dict with the features of the momentum backbone and the classification
                 loss and logits of the momentum classifier.
         """
-
+        
+        if isinstance(batch, dict):
+            batch = self.prepare_batch(batch)
+            
         outs = super().training_step(batch, batch_idx)
 
-        if self.cfg.data.format == 'ffcv':
-            X, targets, _ = batch
-        else:
-            _, X, targets = batch
-
+        _, X, targets = batch
         X = [X] if isinstance(X, torch.Tensor) else X
 
         # remove small crops

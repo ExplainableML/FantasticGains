@@ -106,9 +106,14 @@ __Done.__
 * [X] Include seed separation.
 * [X] Convert every method to take in dict of batches!
 * [X] NOTE: Kill Issues likely due to memory overflow as training continues (GPU or RAM?) - use DALI only with at most 4 workers!
+* [X] FFCV Precaching check.
+* [X] Avoid inplace operations for prepare_batch()
+  * Used `clone()`.
 
 __Today.__
-* [ ] Avoid inplace operations for prepare_batch()
+* [ ] Fix batch prepare issue for momentum methods.
+* [ ] Check all other methods!
+* [ ] Include distributed ffcv.
 * [ ] Stack multiple partitions (gpu-2080ti > gpu-2080ti-preemptable).
 * [Testing] FFCV for Self-supervised data.
 * [Running] Add reduced ImageNet with stronger compression (400, 0.6, 80).

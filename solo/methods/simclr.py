@@ -124,11 +124,11 @@ class SimCLR(BaseMethod):
         Returns:
             torch.Tensor: total loss composed of SimCLR loss and classification loss.
         """
-        
         batch = super().prepare_batch(batch)
         indexes = batch[0]
 
         out = super().training_step(batch, batch_idx)
+        # out = super().training_step([batch[0][-1].clone(), [batch[0][0].clone(), batch[1][0].clone()], batch[0][1].clone()], batch_idx)
         class_loss = out["loss"]
         z = torch.cat(out["z"])
 
@@ -141,7 +141,6 @@ class SimCLR(BaseMethod):
             indexes=indexes,
             temperature=self.temperature,
         )
-
         self.log("train_nce_loss", nce_loss, on_epoch=True, sync_dist=True)
 
         return nce_loss + class_loss
