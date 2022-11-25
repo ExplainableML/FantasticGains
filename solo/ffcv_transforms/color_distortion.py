@@ -28,10 +28,16 @@ class RandomColorDistortion(Operation):
 
     def __init__(self, strength=0.5, p=0.5):
         super().__init__()
-        brightness = 0.8 * strength
-        contrast = 0.8 * strength
-        saturation = 0.8 * strength
-        hue = 0.2 * strength
+        if isinstance(strength, list):
+            brightness = 0.8 * strength[0]
+            contrast = 0.8 * strength[1]
+            saturation = 0.8 * strength[2]
+            hue = 0.2 * strength[3]
+        else:
+            brightness = 0.8 * strength
+            contrast = 0.8 * strength
+            saturation = 0.8 * strength
+            hue = 0.2 * strength
 
         self.brightness = self._check_input(brightness, "brightness")
         self.contrast = self._check_input(contrast, "contrast")

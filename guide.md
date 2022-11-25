@@ -109,12 +109,21 @@ __Done.__
 * [X] FFCV Precaching check.
 * [X] Avoid inplace operations for prepare_batch()
   * Used `clone()`.
+* [X] Fix batch prepare issue for momentum methods.
+* [X] Stack multiple partitions (gpu-2080ti > gpu-2080ti-preemptable).
 
 __Today.__
-* [ ] Fix batch prepare issue for momentum methods.
-* [ ] Check all other methods!
+* [ ] Check generated images!
+* [ ] Remove solarization, compare to other convergence/augmentation elements (check)
+  * VicReg & SimSiam not converging!
+  * Slow convergence overall
+  * Particularly for XENT!
+  * Momentum-based method don't suffer from convergence issues!
+  * Check DALI again!
+* [ ] Prompt when using two different GPUs for momentum methods to avoid cuda deadlock!
+* [WIP] Check all other methods!
+  * Not all methods completed, in particular MAE.
 * [ ] Include distributed ffcv.
-* [ ] Stack multiple partitions (gpu-2080ti > gpu-2080ti-preemptable).
 * [Testing] FFCV for Self-supervised data.
 * [Running] Add reduced ImageNet with stronger compression (400, 0.6, 80).
 * [ ] Re-run SSL baselines with FFCV.

@@ -209,7 +209,52 @@ def main(cfg: DictConfig):
 
         res = cfg.augmentations[0]['crop_size']
         num_loaders = sum([aug_list['num_crops'] for aug_list in cfg.augmentations])
-        decoder = ffcv.fields.rgb_image.RandomResizedCropRGBImageDecoder((res, res))
+        
+        aug_dicts = {
+            'default': {
+                'scale': (0.08, 1),
+                'rest': [
+                    'RandomHorizontalFlip_{"p":0.5}',
+                    'RandomColorDistortion_{"p":0.8,"strength":1}',
+                    'RandomGrayscale_{"p":0.2}'                    
+                ]
+            },
+            'default_weak': {
+                'scale': (0.08, 1),
+                'rest': [
+                    'RandomHorizontalFlip_{"p":0.5}',
+                    'RandomColorDistortion_{"p":0.8,"strength":[0.5,0.5,0.25,0.5}',
+                    'RandomGrayscale_{"p":0.2}',
+                    'RandomSolarization_{"p":0.1}'                     
+                ]
+            },
+            'default_very_weak': {
+                'scale': (0.3, 1),
+                'rest': [
+                    'RandomHorizontalFlip_{"p":0.5}',
+                    'RandomColorDistortion_{"p":0.8,"strength":0.25}',
+                    'RandomGrayscale_{"p":0.1}'                                         
+                ]
+            },
+            'vicreg': {
+                'scale': (0.2, 1),
+                'rest': [
+                    'RandomHorizontalFlip_{"p":0.5}',
+                    'RandomColorDistortion_{"p":0.8,"strength":[0.5,0.5,0.25,0.5}',
+                    'RandomGrayscale_{"p":0.2}',
+                    'RandomSolarization_{"p":0.1}'                                         
+                ]
+            },
+            'minimal': {
+                'scale': (0.08, 1),
+                'rest': [
+                    'RandomHorizontalFlip_{"p":0.5}'
+                ]
+            }                         
+        }
+        ffcv_augmentations = aug_dicts[cfg.ffcv_augmentation]
+        scale = ffcv_augmentations['scale']
+        decoder = ffcv.fields.rgb_image.RandomResizedCropRGBImageDecoder((res, res), scale=scale)
         if cfg.strategy == 'ddp':
             order = OrderOption.RANDOM
         else:
@@ -228,12 +273,9 @@ def main(cfg: DictConfig):
                 
         for _ in range(num_loaders):
             image_pipeline, label_pipeline, index_pipeline = [decoder], [], []
-            image_pipeline.extend(solo.ffcv_transforms.provide([
-                'RandomHorizontalFlip_{"p":0.5}',
-                'RandomColorDistortion_{"p":0.8,"strength":0.5}',
-                'RandomGrayscale_{"p":0.2}',
-                'RandomSolarization_{"p":0.2}'
-            ]))
+            # For VicReg reduce strength!
+            
+            image_pipeline.extend(solo.ffcv_transforms.provide(ffcv_augmentations['rest']))
             image_pipeline.extend([
                 ffcv.transforms.ToTensor(),
                 ffcv.transforms.ToDevice(device, non_blocking=True),
@@ -298,12 +340,37 @@ def main(cfg: DictConfig):
 
         train_loader = {0: train_loader}
         
+    # # Visual Debugging.
+    # from IPython import embed; embed()
+    # iterator = iter(zip(train_loader[0], train_loader[1]))
+    # for k in range(3):
+    #     out = next(iterator)
+    #     rand_idcs = np.random.choice(cfg.optimizer.batch_size, 6, replace=False)
+    #     samples_1 = out[0][0][rand_idcs].detach().cpu().numpy().astype(float)
+    #     samples_2 = out[1][0][rand_idcs].detach().cpu().numpy().astype(float)
+    #     samples_1 = np.clip((samples_1 * np.array(std).reshape(1, 3, 1, 1)) + np.array(mean).reshape(1, 3, 1, 1), 0, 255).astype(np.uint8)
+    #     samples_2 = np.clip((samples_2 * np.array(std).reshape(1, 3, 1, 1)) + np.array(mean).reshape(1, 3, 1, 1), 0, 255).astype(np.uint8)
+    #     import matplotlib.pyplot as plt
+    #     f, axes = plt.subplots(2, len(rand_idcs))
+    #     for i in range(len(rand_idcs)):
+    #         axes[0, i].imshow(samples_1[i].transpose(1, 2, 0))
+    #         axes[1, i].imshow(samples_2[i].transpose(1, 2, 0))
+    #     f.set_size_inches(4 * len(rand_idcs), 4 * 2)
+    #     f.tight_layout()
+    #     f.savefig(f'sample_viz_{k}.png')
+    #     plt.close()
+    
+    
     # 1.7 will deprecate resume_from_checkpoint, but for the moment
     # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
     ckpt_path, wandb_run_id = None, None
     # from IPython import embed; embed()
-    checkpoint_path = os.path.join(
-        cfg.checkpoint.dir, cfg.data.dataset, cfg.method, f'seed_{cfg.seed}')
+    if cfg.data.format == 'ffcv':
+        checkpoint_path = os.path.join(
+            cfg.checkpoint.dir, cfg.data.dataset + '_ffcv', cfg.ffcv_augmentation, cfg.method, f'seed_{cfg.seed}')
+    else:
+        checkpoint_path = os.path.join(
+            cfg.checkpoint.dir, cfg.data.dataset, cfg.method, f'seed_{cfg.seed}')
     
     if cfg.auto_resume.enabled and cfg.resume_from_checkpoint is None:
         auto_resumer = AutoResumer(
