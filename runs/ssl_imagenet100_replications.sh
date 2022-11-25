@@ -128,7 +128,8 @@ python main_pretrain.py --config-path scripts/replications/imagenet-100 --config
 
 train_datapath="/home/karsten_dl/Dropbox/Projects/Datasets/ffcv_imagenette320/train_320_0.50_90.ffcv"
 val_datapath="/home/karsten_dl/Dropbox/Projects/Datasets/ffcv_imagenette320/val_320_0.50_90.ffcv"
-python main_pretrain.py --config-path scripts/replications/imagenet-100 --config-name simclr.yaml ++devices=[0] ++seed=0 ++strategy="dp" ++data.num_workers=8 ++data.format="ffcv" ++data.train_path=$train_datapath ++data.val_path=$val_datapath ++data.dataset="imagenette320" ++checkpoint.enabled=False ++auto_resume.enabled=False ++wandb.enabled=False ++optimizer.batch_size=32
+python main_pretrain.py --config-path scripts/replications/imagenet-100 --config-name simclr.yaml ++ffcv_augmentation="default_weak" ++devices=[0] ++seed=0 ++strategy="dp" ++data.num_workers=8 ++data.format="ffcv" ++data.train_path=$train_datapath ++data.val_path=$val_datapath ++data.dataset="imagenette320" ++checkpoint.enabled=False ++auto_resume.enabled=False ++wandb.enabled=False ++optimizer.batch_size=24
+
 python main_pretrain.py --config-path scripts/replications/imagenet-100 --config-name simclr.yaml ++devices=[0,1] ++seed=0 ++strategy="dp" ++data.num_workers=8 ++data.format="ffcv" ++data.train_path=$train_datapath ++data.val_path=$val_datapath ++data.dataset="imagenette320" ++checkpoint.enabled=False ++auto_resume.enabled=False ++wandb.enabled=False ++optimizer.batch_size=32
 
 python main_pretrain.py --config-path scripts/replications/imagenet-100 --config-name mae.yaml ++devices=[0] ++seed=0 ++strategy="dp" ++data.num_workers=8 ++data.format="ffcv" ++data.train_path=$train_datapath ++data.val_path=$val_datapath ++data.dataset="imagenette320" ++checkpoint.enabled=False ++auto_resume.enabled=False ++wandb.enabled=False ++optimizer.batch_size=48 ++devices=[0] ++deterministic=False

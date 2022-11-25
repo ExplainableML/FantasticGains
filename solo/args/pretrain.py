@@ -55,7 +55,6 @@ def add_and_assert_dataset_cfg(cfg: omegaconf.DictConfig) -> omegaconf.DictConfi
     cfg.data.no_labels = omegaconf_select(cfg, "data.no_labels", False)
     cfg.data.fraction = omegaconf_select(cfg, "data.fraction", -1)
     cfg.debug_augmentations = omegaconf_select(cfg, "debug_augmentations", False)
-    cfg.ffcv_augmentation = omegaconf_select(cfg, "ffcv_augmentation protocol", "default")
     return cfg
 
 
@@ -172,4 +171,7 @@ def parse_cfg(cfg: omegaconf.DictConfig):
     elif cfg.optimizer.name == "adamw":
         cfg.optimizer.kwargs.betas = omegaconf_select(cfg, "optimizer.kwargs.betas", [0.9, 0.999])
 
+    # extra ffcv kwargs
+    cfg.ffcv_augmentation = omegaconf_select(cfg, "ffcv_augmentation", "default")
+    
     return cfg

@@ -114,12 +114,6 @@ def main(cfg: DictConfig):
             device = torch.device('cuda')
         
             image_pipeline, label_pipeline, index_pipeline = [decoder], [], []
-            image_pipeline.extend(solo.ffcv_transforms.provide([
-                'RandomHorizontalFlip_{"p":0.5}',
-                'RandomColorDistortion_{"p":0.8,"strength":0.5}',
-                'RandomGrayscale_{"p":0.2}',
-                'RandomSolarization_{"p":0.2}'                
-            ]))
             image_pipeline.extend([
                 ffcv.transforms.ToTensor(),
                 ffcv.transforms.ToDevice(device, non_blocking=True),
@@ -223,7 +217,7 @@ def main(cfg: DictConfig):
                 'scale': (0.08, 1),
                 'rest': [
                     'RandomHorizontalFlip_{"p":0.5}',
-                    'RandomColorDistortion_{"p":0.8,"strength":[0.5,0.5,0.25,0.5}',
+                    'RandomColorDistortion_{"p":0.8,"strength":[0.5,0.5,0.25,0.5]}',
                     'RandomGrayscale_{"p":0.2}',
                     'RandomSolarization_{"p":0.1}'                     
                 ]
@@ -240,7 +234,7 @@ def main(cfg: DictConfig):
                 'scale': (0.2, 1),
                 'rest': [
                     'RandomHorizontalFlip_{"p":0.5}',
-                    'RandomColorDistortion_{"p":0.8,"strength":[0.5,0.5,0.25,0.5}',
+                    'RandomColorDistortion_{"p":0.8,"strength":[0.5,0.5,0.25,0.5]}',
                     'RandomGrayscale_{"p":0.2}',
                     'RandomSolarization_{"p":0.1}'                                         
                 ]
@@ -252,8 +246,10 @@ def main(cfg: DictConfig):
                 ]
             }                         
         }
+        
         ffcv_augmentations = aug_dicts[cfg.ffcv_augmentation]
         scale = ffcv_augmentations['scale']
+        
         decoder = ffcv.fields.rgb_image.RandomResizedCropRGBImageDecoder((res, res), scale=scale)
         if cfg.strategy == 'ddp':
             order = OrderOption.RANDOM
@@ -270,7 +266,7 @@ def main(cfg: DictConfig):
         # torch.distributed.init_process_group(
         #     "nccl", rank=self.base_gpu, world_size=world_size)
         # torch.cuda.set_device(self.base_gpu)
-                
+                        
         for _ in range(num_loaders):
             image_pipeline, label_pipeline, index_pipeline = [decoder], [], []
             # For VicReg reduce strength!
