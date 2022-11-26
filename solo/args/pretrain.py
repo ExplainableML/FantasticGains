@@ -173,5 +173,6 @@ def parse_cfg(cfg: omegaconf.DictConfig):
 
     # extra ffcv kwargs
     cfg.ffcv_augmentation = omegaconf_select(cfg, "ffcv_augmentation", "default")
+    cfg.ffcv_dtype = omegaconf_select(cfg, "ffcv_dtype", "float16")
     
     return cfg

@@ -113,12 +113,13 @@ def main(cfg: DictConfig):
             order = OrderOption.SEQUENTIAL
             device = torch.device('cuda')
         
+            ffcv_dtype = np.float16 if cfg.ffcv_dtype == 'float16' else np.float32
             image_pipeline, label_pipeline, index_pipeline = [decoder], [], []
             image_pipeline.extend([
                 ffcv.transforms.ToTensor(),
                 ffcv.transforms.ToDevice(device, non_blocking=True),
                 ffcv.transforms.ToTorchImage(),
-                ffcv.transforms.NormalizeImage(np.array(mean), np.array(std), np.float16)
+                ffcv.transforms.NormalizeImage(np.array(mean), np.array(std), ffcv_dtype)
             ])
 
             label_pipeline.extend([
@@ -266,7 +267,8 @@ def main(cfg: DictConfig):
         # torch.distributed.init_process_group(
         #     "nccl", rank=self.base_gpu, world_size=world_size)
         # torch.cuda.set_device(self.base_gpu)
-                        
+        
+        ffcv_dtype = np.float16 if cfg.ffcv_dtype == 'float16' else np.float32                        
         for _ in range(num_loaders):
             image_pipeline, label_pipeline, index_pipeline = [decoder], [], []
             # For VicReg reduce strength!
@@ -276,7 +278,7 @@ def main(cfg: DictConfig):
                 ffcv.transforms.ToTensor(),
                 ffcv.transforms.ToDevice(device, non_blocking=True),
                 ffcv.transforms.ToTorchImage(),
-                ffcv.transforms.NormalizeImage(np.array(mean), np.array(std), np.float16)
+                ffcv.transforms.NormalizeImage(np.array(mean), np.array(std), ffcv_dtype)
             ])
 
             label_pipeline.extend([
@@ -363,7 +365,7 @@ def main(cfg: DictConfig):
     # from IPython import embed; embed()
     if cfg.data.format == 'ffcv':
         checkpoint_path = os.path.join(
-            cfg.checkpoint.dir, cfg.data.dataset + '_ffcv', cfg.ffcv_augmentation, cfg.method, f'seed_{cfg.seed}')
+            cfg.checkpoint.dir, cfg.data.dataset + f'_ffcv_{cfg.ffcv_dtype}', cfg.ffcv_augmentation, cfg.method, f'seed_{cfg.seed}')
     else:
         checkpoint_path = os.path.join(
             cfg.checkpoint.dir, cfg.data.dataset, cfg.method, f'seed_{cfg.seed}')
