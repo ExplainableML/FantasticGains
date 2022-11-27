@@ -73,7 +73,7 @@ def add_and_assert_wandb_cfg(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
     cfg.wandb.enabled = omegaconf_select(cfg, "wandb.enabled", False)
     cfg.wandb.entity = omegaconf_select(cfg, "wandb.entity", None)
     cfg.wandb.project = omegaconf_select(cfg, "wandb.project", "solo-learn")
-    cfg.wandb.group = omegaconf_select(cfg, "wandb.group", "default-group")
+    cfg.wandb.group = omegaconf_select(cfg, "wandb.group", None)
     cfg.wandb.autogroup = omegaconf_select(cfg, "wandb.autogroup", False)
     cfg.wandb.offline = omegaconf_select(cfg, "wandb.offline", False)
 
@@ -146,10 +146,15 @@ def parse_cfg(cfg: omegaconf.DictConfig):
 
     if cfg.data.format == "dali":
         assert cfg.data.dataset in ["imagenet100", "imagenet", "imagenette320", "custom"]
-
+    # 0.114
     # adjust lr according to batch size
     cfg.num_nodes = omegaconf_select(cfg, "num_nodes", 1)
-    scale_factor = cfg.optimizer.batch_size * len(cfg.devices) * cfg.num_nodes / 256
+
+    if cfg.strategy == 'ddp':
+        scale_factor = cfg.optimizer.batch_size * len(cfg.devices) * cfg.num_nodes / 256
+    else:
+        scale_factor = cfg.optimizer.batch_size / 256
+
     cfg.optimizer.lr = cfg.optimizer.lr * scale_factor
     if cfg.data.val_path is not None:
         assert not OmegaConf.is_missing(cfg, "optimizer.classifier_lr")

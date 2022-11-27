@@ -111,9 +111,18 @@ __Done.__
   * Used `clone()`.
 * [X] Fix batch prepare issue for momentum methods.
 * [X] Stack multiple partitions (gpu-2080ti > gpu-2080ti-preemptable).
+* [X] Check generated images!
+* [X] Make custom W&B groups > just use cfg.name
+* [X] Fix W&B sync issue or use offline log?
+  * Server-side
+* [X] Check DDP effective batchsize
 
 __Today.__
-* [ ] Check generated images!
+* [ ] Check learning rate differences between DP and DDP
+* [ ] Why are only momentum methods converging well?
+* [ ] Check that ffcv pairs are consistent.
+* [ ] Validate on true data.
+* [ ] Fix batchsize issue for each method!
 * [ ] Remove solarization, compare to other convergence/augmentation elements (check)
   * VicReg & SimSiam not converging!
   * Slow convergence overall
@@ -154,3 +163,13 @@ __General.__
 
 ### Replications
 Runs in `scripts/replications/imagenet-100`.
+
+Different data processing speeds on standard resources:
+* DALI, 4 workers, DDP: [140s/epoch]
+* DALI, 4 workers, DP: [N/A]
+* Default, 4 workers, DP: [13min/epoch]
+* Default, 36 workers, DP: [170s/epoch]
+* Default, 36 workers, DDP: [160s/epoch]
+* FFCV, 36 workers, DP: [110s/epoch]
+
+Problem: FFCV not correctly converging for some reason.

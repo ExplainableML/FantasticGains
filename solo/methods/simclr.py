@@ -50,6 +50,8 @@ class SimCLR(BaseMethod):
             nn.ReLU(),
             nn.Linear(proj_hidden_dim, proj_output_dim),
         )
+        
+        self.count = 0
 
     @staticmethod
     def add_and_assert_specific_cfg(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
@@ -124,6 +126,31 @@ class SimCLR(BaseMethod):
         Returns:
             torch.Tensor: total loss composed of SimCLR loss and classification loss.
         """
+        # if self.count % 100 == 0:
+        #     import numpy as np
+        #     import solo
+        #     mean, std = solo.utils.constants.MEANS_N_STD.get('imagenet100')       
+        #     samples_1 = batch[0][1][0].detach().cpu().numpy().astype(np.float32)
+        #     samples_2 = batch[0][1][1].detach().cpu().numpy().astype(np.float32)
+        #     # mean, std = solo.utils.constants.FFCV_MEANS_N_STD.get('imagenet100')
+        #     # samples_1 = batch[0][0].detach().cpu().numpy().astype(np.float32)
+        #     # samples_2 = batch[1][0].detach().cpu().numpy().astype(np.float32)
+        #     n_samples = 10
+        #     rand_idcs = np.random.choice(len(samples_1), n_samples, replace=False)
+        #     samples_1 = np.clip(((samples_1 * np.array(std).reshape(1, 3, 1, 1)) + np.array(mean).reshape(1, 3, 1, 1)) * 255, 0, 255).astype(np.uint8)
+        #     samples_2 = np.clip(((samples_2 * np.array(std).reshape(1, 3, 1, 1)) + np.array(mean).reshape(1, 3, 1, 1)) * 255, 0, 255).astype(np.uint8)
+        #     # samples_1 = np.clip(((samples_1 * np.array(std).reshape(1, 3, 1, 1)) + np.array(mean).reshape(1, 3, 1, 1)) * 1, 0, 255).astype(np.uint8)
+        #     # samples_2 = np.clip(((samples_2 * np.array(std).reshape(1, 3, 1, 1)) + np.array(mean).reshape(1, 3, 1, 1)) * 1, 0, 255).astype(np.uint8)
+        #     import matplotlib.pyplot as plt
+        #     f, axes = plt.subplots(2, len(rand_idcs))
+        #     for i in range(len(rand_idcs)):
+        #         axes[0, i].imshow(samples_1[i].transpose(1, 2, 0))
+        #         axes[1, i].imshow(samples_2[i].transpose(1, 2, 0))
+        #     f.set_size_inches(4 * len(rand_idcs), 4 * 2)
+        #     f.tight_layout()
+        #     f.savefig(f'sample_viz_{self.count}_base.png')
+        #     plt.close() 
+        self.count += 1
         batch = super().prepare_batch(batch)
         indexes = batch[0]
 
@@ -131,7 +158,6 @@ class SimCLR(BaseMethod):
         # out = super().training_step([batch[0][-1].clone(), [batch[0][0].clone(), batch[1][0].clone()], batch[0][1].clone()], batch_idx)
         class_loss = out["loss"]
         z = torch.cat(out["z"])
-
         # ------- contrastive loss -------
         n_augs = self.num_large_crops + self.num_small_crops
         indexes = indexes.repeat(n_augs)

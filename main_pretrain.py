@@ -363,13 +363,17 @@ def main(cfg: DictConfig):
     # the argument is the same, but we need to pass it as ckpt_path to trainer.fit
     ckpt_path, wandb_run_id = None, None
     # from IPython import embed; embed()
-    if cfg.data.format == 'ffcv':
-        checkpoint_path = os.path.join(
-            cfg.checkpoint.dir, cfg.data.dataset + f'_ffcv_{cfg.ffcv_dtype}', cfg.ffcv_augmentation, cfg.method, f'seed_{cfg.seed}')
+    if cfg.wandb.group is None:
+        if cfg.data.format == 'ffcv':
+            checkpoint_path = os.path.join(
+                cfg.checkpoint.dir, cfg.data.dataset + f'_ffcv_{cfg.ffcv_dtype}', cfg.ffcv_augmentation, cfg.method, f'seed_{cfg.seed}')
+        else:
+            checkpoint_path = os.path.join(
+                cfg.checkpoint.dir, cfg.data.dataset, cfg.method, f'seed_{cfg.seed}')
     else:
         checkpoint_path = os.path.join(
-            cfg.checkpoint.dir, cfg.data.dataset, cfg.method, f'seed_{cfg.seed}')
-    
+            cfg.checkpoint_dir, cfg.data.dataset, cfg.wandb.group)    
+        
     if cfg.auto_resume.enabled and cfg.resume_from_checkpoint is None:
         auto_resumer = AutoResumer(
             checkpoint_dir=checkpoint_path,
@@ -462,7 +466,7 @@ def main(cfg: DictConfig):
         )
     except:
         pass
-    
+
     if cfg.data.format == "dali":
         trainer.fit(model, ckpt_path=ckpt_path, datamodule=dali_datamodule)
     else:
