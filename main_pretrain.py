@@ -366,13 +366,13 @@ def main(cfg: DictConfig):
     if cfg.wandb.group is None:
         if cfg.data.format == 'ffcv':
             checkpoint_path = os.path.join(
-                cfg.checkpoint.dir, cfg.data.dataset + f'_ffcv_{cfg.ffcv_dtype}', cfg.ffcv_augmentation, cfg.method, f'seed_{cfg.seed}')
+                cfg.checkpoint.dir, cfg.data.dataset + f'_ffcv_{cfg.ffcv_dtype}', cfg.ffcv_augmentation, cfg.method, cfg.name, f'seed_{cfg.seed}')
         else:
             checkpoint_path = os.path.join(
-                cfg.checkpoint.dir, cfg.data.dataset, cfg.method, f'seed_{cfg.seed}')
+                cfg.checkpoint.dir, cfg.data.dataset, cfg.method, cfg.name, f'seed_{cfg.seed}')
     else:
         checkpoint_path = os.path.join(
-            cfg.checkpoint_dir, cfg.data.dataset, cfg.wandb.group)    
+            cfg.checkpoint_dir, cfg.data.dataset, cfg.wandb.group, cfg.name)    
         
     if cfg.auto_resume.enabled and cfg.resume_from_checkpoint is None:
         auto_resumer = AutoResumer(
