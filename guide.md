@@ -48,7 +48,7 @@ __NOTE:__ A simple linear probe is trained online jointly during training on the
 ### Adding a new dataset.
 Please ensure that the dataloader outputs an iterable of form `[sample_idx, images, targets]`.
 
-## ImageNet-100
+### ImageNet-100
 * To create imagenet-100, go to  `scripts/utils`, then run `python make_imagenet100.py <path_to_imagenet> <target_imagenet100_path>`.
 
 To edit in `solo/args/dataset.py`:
@@ -80,6 +80,27 @@ To edit in `solo/data/dali_dataloader.py`:
 * `MEANS_N_STD`
 * `ClassificationDALIDataModule`
 
+
+
+### Creating a FFCV dataloader
+To create a ffcv compatible dataset for faster training, in this case ImageNet, we utilise `create_ffcv_loaer/write_imagenet_with_indices.py`, which is wrapped into a bash-script `create_ffcv_loaer/write_imagenet_with_indices.sh`.
+
+Assuming the original ImageNet 2012 dataset is located in `imagenet_path`, and with a target path `target_path`, one can simply run
+
+```
+export IMAGENET_DIR=imagenet_path
+export WRITE_DIR=target_path
+bash write_imagenet_with_indices.sh 500 0.50 90
+```
+
+where we pass information about the imagesize to use (`500`), the percentage of data being compressed (`50`) and the amount of compression (`90`). This is the default suggested in https://ffcv.io. 
+Note that when using other datasets such ImageNette-320 or to increase throughput even more, one can or should change the imagesize to e.g. `320`.
+
+
+__Note__: 
+* This repository can be used with or without ffcv-wrapped dataloaders!
+* Generally, there is a slight drop in performance when utilising FFCV-wrapped dataset, but the drop is generally consistent and small.
+* 
 
 ### Where is stuff stored and what is logged?
 __WandB:__ By default, training metrics and model graphs are logged to W&B.
