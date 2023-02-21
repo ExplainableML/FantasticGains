@@ -12,24 +12,24 @@ The ultimate goal of this project is to obtain a student model with top ImageNet
 
 ---
 ## Implemented Distillation Approaches
-Knowledge Distillation Approaches
+*Knowledge Distillation Approaches*
 | Name      | Approach      | W&B Report |
 | ------------- |---------|-----------|
 |kl | KL-Divergence Distillation | [:clipboard:](https://api.wandb.ai/report/luth/wouuuku1)|
 |xekl | KL-Div + Cross-Entropy Distillation | [:clipboard:](https://wandb.ai/luth/kl-dist-imagenet/reports/XE-KL-Distillation-Study--VmlldzozMzQyODIz?accessToken=6jeq4z7uksvcbevtb07i0unlwcw54krwwjxtxl2j8kbwgzjhj8wwfi84ggh40zed) [:clipboard:](https://api.wandb.ai/links/luth/v2thuisa) |
-|Hinton | Cross-Entropy between soft and hard targets [:page_facing_up:](https://arxiv.org/abs/1503.02531) | :x: |
+|hinton | Cross-Entropy between soft and hard targets [:page_facing_up:](https://arxiv.org/abs/1503.02531) | :x: |
 
-Contrastive Knowledge Distillation
+*Contrastive Knowledge Distillation*
 | Name      | Approach      | W&B Report |
 | ------------- |---------|-----------|
 |cd | Simple Contrastive Distillation | [:clipboard:](https://api.wandb.ai/links/luth/nqo1rjme) |
 |crd | Contrastive Representation Distillation [:page_facing_up:](https://arxiv.org/abs/1503.02531) | [:clipboard:](https://wandb.ai/luth/crd-dist-imagenet/reports/Contrastive-Represenation-Distillation-Study--VmlldzozMzk0NjE3?accessToken=otkanajhn9dguo9by0xe3y2stl9hv2i7les4u4gqm11z6f4wtke8llq8bknvy7c3) |
 
-Auxiliary Approaches
+*Auxiliary Approaches*
 | Name      | Approach      | W&B Report |
 | ------------- |---------|-----------|
-|mcl | Momentum-based Weight Interpolation [:page_facing_up:](https://arxiv.org/abs/2211.03186) | [:clipboard:]([:page_facing_up:](https://api.wandb.ai/links/luth/6yv6q2xl))|
-|sup | Supervised Knowledge Distillation | [:clipboard:]([:page_facing_up:](https://api.wandb.ai/links/luth/v2thuisa)) [:clipboard:]([:page_facing_up:](https://api.wandb.ai/links/luth/on8viq6b))|
+|mcl | Momentum-based Weight Interpolation [:page_facing_up:](https://arxiv.org/abs/2211.03186) | [:clipboard:](https://api.wandb.ai/links/luth/6yv6q2xl)|
+|sup | Supervised Knowledge Distillation | [:clipboard:](https://api.wandb.ai/links/luth/v2thuisa) [:clipboard:](https://api.wandb.ai/links/luth/on8viq6b)|
 |mt  | Multi-Teacher Distillation | :x: |
 
 ---
@@ -84,5 +84,6 @@ pre-commit install
 ---
 
 ## Training
-Use `dist_job.sh` to conduct knowledge distillation for one teacher-student pair.
-Use `contdist_job.sh` to conduct continual knowledge distillation for one student model and multiple teacher models.
+Execute `dist_job.sh` to conduct knowledge distillation for one teacher-student pair.
+
+Execute `contdist_job.sh` to conduct continual knowledge distillation for one student model and multiple teacher models.
