@@ -11,7 +11,8 @@ write_dataset () {
         --cfg.max_resolution=${2} \
         --cfg.write_mode=proportion \
         --cfg.compress_probability=${3} \
-        --cfg.jpeg_quality=$4
+        --cfg.jpeg_quality=$4 \
+        --cfg.subset=100000
 }
 
 write_dataset train $1 $2 $3

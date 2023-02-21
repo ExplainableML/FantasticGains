@@ -1,3 +1,5 @@
+import numpy as np
+
 from torch.utils.data import Subset
 from ffcv.writer import DatasetWriter
 from ffcv.fields import IntField, RGBImageField
@@ -55,7 +57,10 @@ def main(dataset, split, data_dir, write_path, max_resolution, num_workers,
     my_dataset = ImageFolderWithIndex(root=data_dir)
     # my_dataset = ImageFolder(root=data_dir)
 
-    if subset > 0: my_dataset = Subset(my_dataset, range(subset))
+    if subset > 0 and split == 'train':
+        indices = np.load('10p_subset.npy')
+        my_dataset = Subset(my_dataset, indices)
+    #if subset > 0: my_dataset = Subset(my_dataset, range(subset))
     writer = DatasetWriter(write_path, {
         'image': RGBImageField(write_mode=write_mode,
                                max_resolution=max_resolution,
@@ -66,6 +71,7 @@ def main(dataset, split, data_dir, write_path, max_resolution, num_workers,
     }, num_workers=num_workers)
 
     writer.from_indexed_dataset(my_dataset, chunksize=chunk_size)
+
 
 if __name__ == '__main__':
     config = get_current_config()

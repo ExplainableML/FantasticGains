@@ -19,6 +19,7 @@ _N_CLASSES_PER_DATASET = {
     "cifar100": 100,
     "stl10": 10,
     "imagenet": 1000,
+    "imagenet_subset": 1000,
     "imagenet100": 100,
     "imagenette320": 10,
 }
@@ -28,6 +29,7 @@ _SUPPORTED_DATASETS = [
     "cifar100",
     "stl10",
     "imagenet",
+    "imagenet_subset",
     "imagenet100",
     "imagenette320",
     "custom",
@@ -156,9 +158,12 @@ def parse_cfg(cfg: omegaconf.DictConfig):
         scale_factor = cfg.optimizer.batch_size / 256
 
     cfg.optimizer.lr = cfg.optimizer.lr * scale_factor
-    if cfg.data.val_path is not None:
-        assert not OmegaConf.is_missing(cfg, "optimizer.classifier_lr")
-        cfg.optimizer.classifier_lr = cfg.optimizer.classifier_lr * scale_factor
+    #if cfg.data.val_path is not None:
+    #    assert not OmegaConf.is_missing(cfg, "optimizer.classifier_lr")
+    #    cfg.optimizer.classifier_lr = cfg.optimizer.classifier_lr * scale_factor
+
+    if 'mcl' in cfg.loss.name:
+        cfg.loss.N = cfg.loss.N / scale_factor
 
     # extra optimizer kwargs
     cfg.optimizer.kwargs = omegaconf_select(cfg, "optimizer.kwargs", {})

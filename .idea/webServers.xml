@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="10a3570c-d779-48ec-a6b5-d8c02e3880e0" name="slurm">
+        <fileTransfer accessType="SFTP" host="134.2.168.72" port="22" sshConfigId="56fe4518-e352-4765-a456-1105c5e0d694" sshConfig="aoq877@134.2.168.72:22 key" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

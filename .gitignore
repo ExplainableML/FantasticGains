@@ -2,3 +2,6 @@
 __pycache__
 JOBS
 LOGS
+wandb
+venv
+files
