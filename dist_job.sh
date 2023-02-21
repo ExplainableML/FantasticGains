@@ -10,32 +10,6 @@
 
 # teachers: 77,66,136,157,94,43
 # diverse teachers: 124,214,291,101,232,79,145,151,26,277,77,109,182,299,36,130,2,292,211,234
-while test $# -gt 0; do
-           case "$1" in
-                -seed)
-                    shift
-                    s=$1
-                    shift
-                    ;;
-                -lr)
-                    shift
-                    lr=$1
-                    shift
-                    ;;
-                -t)
-                    shift
-                    t=$1
-                    shift
-                    ;;
-                *)
-                   echo "$1 is not a recognized flag!"
-                   return 1;
-                   ;;
-          esac
-done
-
-
-
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 export TORCH_HOME=/mnt/qb/work/akata/aoq877/torch_models/
 
