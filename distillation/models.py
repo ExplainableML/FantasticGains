@@ -19,25 +19,28 @@ def unfreeze_all(model):
         param.requires_grad = True
 
 
-def init_timm_model(name, device, split_linear=False):
-    model = timm.create_model(name, pretrained=True)
+def init_timm_model(name, device, split_linear=False, pretrained=True):
+    model = timm.create_model(name, pretrained=pretrained)
     # get default model config
     cfg_m = model.default_cfg
     if split_linear:
         #feature_extractor = nn.Sequential(*list(model.children())[:-1])
         feature_extractor = timm.create_model(name, pretrained=True, num_classes=0)
         make_contiguous(feature_extractor)
+        feature_extractor = nn.DataParallel(feature_extractor)
         feature_extractor.to(device, memory_format=torch.channels_last)
         feature_dims = get_feature_dims(feature_extractor, device)
 
         linear = nn.Sequential(nn.Linear(feature_dims, cfg_m['num_classes']))
         linear.load_state_dict(linear_state_dict(model))
         make_contiguous(linear)
+        linear = nn.DataParallel(linear)
         linear.to(device, memory_format=torch.channels_last)
         del model
         return feature_extractor, linear, cfg_m
     else:
         make_contiguous(model)
+        model = nn.DataParallel(model)
         return model.to(device, memory_format=torch.channels_last), cfg_m
 
 
@@ -60,3 +63,9 @@ def linear_state_dict(model):
     lin_state_dict = {'0.weight': torch.squeeze(state_dict[lin_keys[0]]),
                       '0.bias': torch.squeeze(state_dict[lin_keys[1]])}
     return lin_state_dict
+
+
+class WeightingParams(nn.Module):
+    def __init__(self, feat_dim, device):
+        super(WeightingParams, self).__init__()
+        self.params = nn.Parameter(torch.randn(feat_dim, device=device, requires_grad=True))

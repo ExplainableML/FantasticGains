@@ -2,13 +2,15 @@ import torch
 import timm
 import logging
 
+import numpy as np
+
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer, seed_everything
 from sklearn.metrics import accuracy_score
 from torch.cuda.amp import GradScaler, autocast
+from scipy.stats import entropy
 
 from .data import get_ffcv_val_loader
-from .dist_utils import norm_batch
 
 
 def get_predictions(model_a, cfg_a, data_loader, model_b, cfg_b, top_n=1):
@@ -25,6 +27,7 @@ def get_predictions(model_a, cfg_a, data_loader, model_b, cfg_b, top_n=1):
         - true_y: Set of true labels
         - acc: List of calculated accuracies for model_a (and model_b)
     """
+    from .dist_utils import norm_batch
     true_y = []
     preds_a = []
     preds_b = []
@@ -144,3 +147,82 @@ def compare_models(modelname_a, modelname_b, cfg: DictConfig):
     del model_a, model_b, loader_a
     torch.cuda.empty_cache()
     return flips, acc
+
+
+def get_flips_per_class(preds_a, preds_b, true_y):
+    pos_flips = np.zeros((len(true_y), 1000))
+    neg_flips = np.zeros((len(true_y), 1000))
+    for i in range(len(true_y)):
+        pos_flips[i, true_y[i]] = preds_a[i] != true_y[i] and preds_b[i] == true_y[i]
+        neg_flips[i, true_y[i]] = preds_a[i] == true_y[i] and preds_b[i] != preds_a[i]
+
+    pos_flips = np.sum(pos_flips, axis=0)
+    neg_flips = np.sum(neg_flips, axis=0)
+
+    return pos_flips, neg_flips
+
+
+def get_top_p_percent_classes(pos_class_flips, p):
+    sorted_classes = np.argsort(pos_class_flips)[::-1]
+
+    k = []
+    for p_share in p:
+        share, k_val = 0, 1
+        while share < p_share:
+            share = np.sum(pos_class_flips[sorted_classes[:k_val]]) / np.sum(pos_class_flips) * 100
+            k_val += 1
+        k.append(k_val)
+
+    return k
+
+
+def get_topk_class_sim(pos_class_flips, k=None, p=None):
+    assert not(k is None and p is None), 'Please pass either k or p'
+    sorted_classes = np.argsort(pos_class_flips)[::-1]
+
+    if k is None:
+        k = get_top_p_percent_classes(pos_class_flips, p)
+    max_k = max(k)
+
+    with open("files/imagenet1000_clsidx_to_labels.txt") as f:
+        idx2label = eval(f.read())
+
+    class_names = [idx2label[c] for c in sorted_classes[:max_k]]
+
+    import clip
+    device = torch.device('cuda')
+    model, _ = clip.load('ViT-B/32', device, jit=False)
+    text_tokens = clip.tokenize(class_names).to(device)
+    with torch.no_grad():
+        text_features = torch.nn.functional.normalize(model.encode_text(text_tokens), dim=-1)  # Top-k x Dim
+    sims = text_features @ text_features.T
+    tmp = sims.cpu().numpy()
+    avg_sim = []
+    max_sim = []
+    share_of_flips = []
+    for top_k in k:
+        i, j = [], []
+        for l in range(top_k):
+            i += [l]*(top_k-l-1)
+            j += range(l+1, top_k)
+        avg_sim.append(sims[i, j].mean().item())
+        max_sim.append(sims[i, j].max().item())
+        share_of_flips.append(np.sum(pos_class_flips[sorted_classes[:top_k]]) / np.sum(pos_class_flips) * 100)
+    return k, avg_sim, max_sim, share_of_flips
+
+
+def get_dist_improvement(preds, zero_preds, teach_preds, true_y, p=[2, 5, 20, 50, 100]):
+    pos_flips, _ = get_flips_per_class(zero_preds, teach_preds, true_y)
+    dist_flips, _ = get_flips_per_class(zero_preds, preds, true_y)
+
+    k = get_top_p_percent_classes(pos_flips, p)
+    sorted_classes = np.argsort(pos_flips)[::-1]
+
+    improvement = {}
+    for i, top_k in enumerate(k):
+        improvement[f'top{p[i]}%_improve'] = np.sum(dist_flips[sorted_classes[:top_k]])/np.sum(dist_flips)*100
+    improvement['other_improve'] = 100-improvement['top100%_improve']
+    improvement['ent_dist_flips'] = entropy(dist_flips)
+    improvement['transfer_rate'] = np.sum(dist_flips[sorted_classes[:k[-1]]])/np.sum(pos_flips)*100
+
+    return improvement

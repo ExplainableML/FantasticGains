@@ -18,7 +18,7 @@ from wandb import AlertLevel
 
 from solo.args.pretrain import parse_cfg
 from main_distillation import DistillationTrainer
-from distillation.dist_utils import get_val_acc, get_batch_size, param_string
+from distillation.dist_utils import get_val_acc, get_batch_size, param_string, get_val_metrics, contdist_grid_search, get_val_preds
 from distillation.models import init_timm_model
 
 
@@ -30,10 +30,12 @@ class ContinualDistillationTrainer(DistillationTrainer):
         self.student_params = None
         self.teacher_params = None
 
+        self.zero_preds_step = self.zero_preds
+
         self.checkpoint_path = os.path.join(
             cfg.checkpoint.dir, cfg.data.dataset + f'_ffcv_{cfg.ffcv_dtype}', cfg.ffcv_augmentation, cfg.loss.name,
             param_string(cfg.loss), f'{student_name}', f'lr_{cfg.optimizer.lr}',
-            f'batch_size_{cfg.optimizer.batch_size}', param_string(cfg.scheduler), f'seed_{cfg.seed}',param_string(cfg.on_flip))
+            f'batch_size_{cfg.optimizer.batch_size}', param_string(cfg.scheduler), f'seed_{cfg.seed}', param_string(cfg.on_flip))
 
     def update_teacher(self, name_new, params_new):
         self.teacher_name = name_new
@@ -43,6 +45,9 @@ class ContinualDistillationTrainer(DistillationTrainer):
         self.opt = torch.optim.SGD(self.student.parameters(), lr=self.cfg.optimizer.lr, momentum=self.cfg.optimizer.momentum,
                                    weight_decay=self.cfg.optimizer.weight_decay)
 
+        self.student_teacher.load_state_dict(self.student.state_dict())
+        self.zero_preds_step = get_val_preds(self.student, self.val_loader, self.cfg_s)
+
     def load_from_checkpoint(self):
         checkpoint = torch.load(self.checkpoint_path + '/student_checkpoint.pt')
         if self.module_list is not None:
@@ -50,6 +55,8 @@ class ContinualDistillationTrainer(DistillationTrainer):
                 self.module_list[m].load_state_dict(state_dict)
         else:
             self.student.load_state_dict(checkpoint['model_state_dict'])
+        if self.student_teacher is not None:
+            self.student_teacher.load_state_dict(checkpoint['student_teacher_dict'])
         self.theta_slow = checkpoint['theta_slow']
         self.opt.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
@@ -75,8 +82,11 @@ class ContinualDistillationTrainer(DistillationTrainer):
 
         scheduler_dict = self.scheduler.state_dict() if self.scheduler is not None else None
 
+        student_teacher_dict = self.student_teacher.state_dict() if self.student_teacher is not None else None
+
         torch.save({'epoch': epoch,
                     'model_state_dict': model_state_dict,
+                    'student_teacher_dict': student_teacher_dict,
                     'theta_slow': self.theta_slow,
                     'optimizer_state_dict': self.opt.state_dict(),
                     'scheduler_state_dict': scheduler_dict,
@@ -97,6 +107,31 @@ class ContinualDistillationTrainer(DistillationTrainer):
             assert diff < thresh, f'Calculated accuracy and reported accuracy for {name} by {round(diff, 2)} ' \
                                   f'\n sudent_cfg {self.cfg_s} \n teacher_cfg {self.cfg_t}'
 
+    def eval_cd_student(self, loss, t, e):
+        s_metrics = get_val_metrics(self.student, self.val_loader, self.cfg_s, self.zero_preds,
+                                    theta_slow=self.theta_slow, zero_preds_step=self.zero_preds_step)
+        t_acc = get_val_acc(self.teacher, self.val_loader, self.cfg_t)
+        self.student_acc.append(s_metrics['acc'])
+        if e != 0 or t == 0:
+            self.teacher_acc.append(t_acc)
+        stats = {'lr': self.scheduler.get_lr()[0] if self.scheduler is not None else self.cfg.optimizer.lr,
+                 'student_acc': s_metrics['acc'],
+                 'teacher_acc': self.teacher_acc[-1],
+                 'dist_delta': s_metrics['dist_delta'],
+                 'knowledge_gain': s_metrics['knowledge_gain'],
+                 'knowledge_loss': s_metrics['knowledge_loss'],
+                 'dist_delta_step:': s_metrics['dist_delta_step'],
+                 'k_gain_step': s_metrics['knowledge_gain_step'],
+                 'k_loss_step': s_metrics['knowledge_loss_step'],
+                 }
+        log = {**loss, **stats}
+        if e == self.cfg.max_epochs:
+            log['dist_step_delta'] = s_metrics['dist_delta_step']
+            log['dist_step_k_gain'] = s_metrics['knowledge_gain_step']
+            log['dist_step_k_loss'] = s_metrics['knowledge_loss_step']
+        logging.info(f'Log stats: {log}')
+        wandb.log(log, step=t*self.cfg.max_epochs + e+1)
+
     def fit_xekl(self, current_step, wandb_id):
         e_start, t = current_step
         for e in range(e_start, self.cfg.max_epochs):
@@ -105,28 +140,14 @@ class ContinualDistillationTrainer(DistillationTrainer):
             logging.info('Save to checkpoint')
             self.save_to_checkpoint(e, loss, wandb_id)
             logging.info('Get student validation accuracy')
-            s_acc = get_val_acc(self.student, self.val_loader, self.cfg_s, theta_slow=self.theta_slow)
-            t_acc = get_val_acc(self.teacher, self.val_loader, self.cfg_t)
-            self.student_acc.append(s_acc)
-            if e != 0 or t == 0:
-                self.teacher_acc.append(t_acc)
-            stats = {'dist_loss': loss[0],
-                     'kl_loss': loss[1],
-                     'xe_loss': loss[2],
-                     'lr': self.scheduler.get_lr()[0] if self.scheduler is not None else self.cfg.optimizer.lr,
-                     'student_acc': s_acc,
-                     'teacher_acc': self.teacher_acc[-1],
-                     'ts_diff': self.teacher_acc[-1] - self.student_acc[0],
-                     'dist_delta': s_acc - self.student_acc[0],
-                     'student_params': self.student_params,
-                     'teacher_params': self.teacher_params}
-            logging.info(f'Log stats: {stats}')
-            wandb.log(stats, step=t*self.cfg.max_epochs + e+1)
+            self.eval_cd_student(loss, t, e)
 
 
 @hydra.main(version_base="1.2")
 def main(cfg: DictConfig):
-    tags = ['short-dist-long']
+    if cfg.search_id != 'None':
+        cfg = contdist_grid_search(cfg, cfg.search_id)
+    tags = [cfg.tag]
     logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
                         level=logging.INFO,
                         datefmt='%Y-%m-%d %H:%M:%S')
@@ -147,19 +168,25 @@ def main(cfg: DictConfig):
     student_type = models_list['modeltype'][cfg.contdist.student_id]
     logging.info(f'Studentname: {student_name} ({student_type})')
 
-    t_idxs1 = [77, 66, 136, 157, 94, 43]
-    np.random.seed(cfg.contdist.t_seed)
-    t_idxs2 = np.random.choice(models_list.index, cfg.contdist.n_teachers, replace=False)
-    t_idxs = np.concatenate((t_idxs1, t_idxs2))
+    #t_idxs = [124,214,291,101,232,79,145,151,26,277,77,109,182,299,36,130,2,292,211,234]
+    if cfg.tag == 'MT':
+        t_idxs = [124, 291, 232, 145, 26, 77, 182, 36, 2, 211]
+    else:
+        t_idxs = [211, 2, 36, 182, 77, 26, 145, 232, 291, 124]
+    #np.random.seed(cfg.contdist.t_seed)
+    #t_idxs2 = np.random.choice(models_list.index, cfg.contdist.n_teachers, replace=False)
+    #t_idxs = np.concatenate((t_idxs1, t_idxs2))
     teachers = models_list.loc[t_idxs, 'modelname'].values
     teacher_types = models_list.loc[t_idxs, 'modeltype'].values
+    teacher_params = models_list.loc[t_idxs, 'modelparams'].values
     logging.info(f'Teachernames: {teachers}')
 
     if cfg.optimizer.batch_size == 'auto':
-        batch_size = get_batch_size(student_name, teachers[0], device)
+        batch_size = get_batch_size(student_name, teachers[np.argmax(teacher_params)], device, cfg.loss.name)
     else:
         batch_size = cfg.optimizer.batch_size
-    batch_size //= 2
+    if cfg.contdist.student_id == 28:
+        batch_size //= 2
     cfg.optimizer.batch_size = batch_size
     config['batch_size'] = batch_size
     cfg = parse_cfg(cfg)
@@ -181,7 +208,7 @@ def main(cfg: DictConfig):
         e_start, loss, wandb_id = trainer.load_from_checkpoint()
         # initialize wandb logger
         wandb.init(id=wandb_id, resume="allow", project=cfg.wandb.project, config=config, tags=tags)
-        wandb.run.name = f'ContDist_{student_name}'
+        wandb.run.name = f'{student_name}'
         logging.info(f'Loaded from checkpoint: {trainer.checkpoint_path}')
     except FileNotFoundError:
         # create checkpoint folder
@@ -189,7 +216,7 @@ def main(cfg: DictConfig):
         # initialize wandb logger
         wandb_id = wandb.util.generate_id()
         wandb.init(id=wandb_id, project=cfg.wandb.project, config=config, tags=tags)
-        wandb.run.name = f'ContDist_{student_name}'
+        wandb.run.name = f'{student_name}'
         e_start = 0
         wandb.log({'teacher_acc': trainer.teacher_acc[-1],
                    'student_acc': trainer.student_acc[-1],
@@ -206,12 +233,10 @@ def main(cfg: DictConfig):
         if t > 0:
             trainer.update_teacher(teacher, models_list['modelparams'][t_idxs[t]])
 
-        if cfg.loss.name in ['xekl', 'xekl_t', 'xekl_mcl']:
+        if 'xekl' in cfg.loss.name:
             trainer.fit_xekl((e_start, t), wandb_id)
         elif cfg.loss.name in ['crd', 'cd']:
             trainer.fit_contrastive(e_start, wandb_id)
-        elif cfg.loss.name == 'test':
-            trainer.kl_dist_test()
         else:
             raise Exception(f'Distillation approach {cfg.loss.name} not implemented')
 

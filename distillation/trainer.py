@@ -13,6 +13,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 
 from distillation.dist_utils import AverageMeter, param_string, norm_batch
 
+
 class BaseDisitllationTrainer:
     def __init__(self, cfg, teacher_name, student_name):
         self.cfg = cfg
@@ -44,11 +45,23 @@ class BaseDisitllationTrainer:
         for _, label, idx in tqdm(self.train_loader):
             labels += label.cpu().tolist()
 
-        sss = StratifiedShuffleSplit(n_splits=1, test_size=0.1, random_state=123)
-        for train_index, test_index in sss.split(np.zeros(len(labels)), labels):
-            logging.info(f'Generated subset of size {len(test_index)}')
-            logging.info(Counter(np.array(labels)[test_index]))
-            np.save('create_ffcv_loaders/10p_subset.np', test_index)
+        sss = StratifiedShuffleSplit(n_splits=1, test_size=0.1, random_state=1234)
+        for _, subset_index in sss.split(np.zeros(len(labels)), labels):
+            logging.info(f'Generated subset of size {len(subset_index)}')
+            logging.info(Counter(np.array(labels)[subset_index]))
+            subset_labels = np.array(labels)[subset_index]
+            subset_indices = np.array(subset_index)
+
+        for train_index, val_index in sss.split(subset_indices, subset_labels):
+            train_indices = subset_indices[train_index]
+            logging.info(f'Generated train-set of size {len(train_indices)}')
+            logging.info(Counter(subset_labels[train_index]))
+            val_indices = subset_indices[val_index]
+            logging.info(f'Generated val-set of size {len(val_indices)}')
+            logging.info(Counter(subset_labels[val_index]))
+
+            np.save('create_ffcv_loaders/10p_subset_train.np', train_index)
+            np.save('create_ffcv_loaders/10p_subset_val.np', val_index)
 
     def topk_div_test(self):
         """Assessment of the difference between the top-k and the total divergence

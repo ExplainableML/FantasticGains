@@ -24,11 +24,11 @@ loss:
   alpha: 0
   beta: 10
   gamma: 0.1
-  kd_T: 4
+  kd_T: 1
 optimizer:
   name: "SGD"
   batch_size: 128
-  lr: 0.01
+  lr: 0.0001
   weight_decay: 1e-4
   momentum: 0.9
 scheduler:
@@ -38,6 +38,10 @@ checkpoint:
   enabled: True
   dir: "trained_models"
   frequency: 1
+on_flip:
+  pos: 'distill'
+  neg: 'distill'
+  neut: 'distill'
 
 # overwrite PL stuff
 max_epochs: 100

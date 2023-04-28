@@ -37,7 +37,7 @@ scheduler:
   warmup: 0
 checkpoint:
   enabled: True
-  dir: "trained_models"
+  dir: "/mnt/qb/akata/aoq877/trained_models/trained_models"
   frequency: 1
 search_id: None
 student_id: 1

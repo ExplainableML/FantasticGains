@@ -59,7 +59,6 @@ def get_ffcv_val_loader(model_cfg, device, cfg, batch_size=None):
             "nccl", rank=0, world_size=len(cfg.devices))
         torch.cuda.set_device(0)
 
-
     loader = ffcv.loader.Loader(
         cfg.data.val_path,
         batch_size=batch_size if batch_size is not None else cfg.optimizer.batch_size,

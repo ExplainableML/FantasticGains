@@ -20,10 +20,10 @@ class CRDLoss(nn.Module):
         opt.nce_m: the momentum for updating the memory buffer
         opt.n_data: the number of samples in the training set, therefore the memory buffer is: opt.n_data x opt.feat_dim
     """
-    def __init__(self, opt, device):
+    def __init__(self, opt, device, s_dim, t_dim):
         super(CRDLoss, self).__init__()
-        self.embed_s = Embed(opt.loss.s_dim, opt.loss.feat_dim)
-        self.embed_t = Embed(opt.loss.t_dim, opt.loss.feat_dim)
+        self.embed_s = Embed(s_dim, opt.loss.feat_dim)
+        self.embed_t = Embed(t_dim, opt.loss.feat_dim)
         self.contrast = ContrastMemory(opt.loss.feat_dim, opt.data.n_data, opt.loss.nce_k, opt.loss.nce_t, opt.loss.nce_m)
         self.criterion_t = ContrastLoss(opt.data.n_data)
         self.criterion_s = ContrastLoss(opt.data.n_data)
@@ -113,7 +113,7 @@ class DistillKL(nn.Module):
         if reduction:
             loss = nn.functional.kl_div(p_s, p_t, reduction='sum') * (self.T**2) / y_s.shape[0]
         else:
-            loss = nn.functional.kl_div(p_s, p_t, reduction='sum') * (self.T ** 2)
+            loss = nn.functional.kl_div(p_s, p_t, reduction='none') * (self.T ** 2)
         return loss
 
 
