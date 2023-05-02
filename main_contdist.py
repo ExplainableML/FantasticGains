@@ -108,10 +108,10 @@ class ContinualDistillationTrainer(DistillationTrainer):
                                   f'\n sudent_cfg {self.cfg_s} \n teacher_cfg {self.cfg_t}'
 
     def eval_cd_student(self, loss, t, e):
-        s_metrics = get_val_metrics(self.student, self.val_loader, self.cfg_s, self.zero_preds,
+        s_metrics = get_val_metrics(self.student, self.teacher, self.val_loader, self.cfg_s, self.zero_preds,
                                     theta_slow=self.theta_slow, zero_preds_step=self.zero_preds_step)
         t_acc = get_val_acc(self.teacher, self.val_loader, self.cfg_t)
-        self.student_acc.append(s_metrics['acc'])
+        self.student_acc.append(s_metrics['student_acc'])
         if e != 0 or t == 0:
             self.teacher_acc.append(t_acc)
         stats = {'lr': self.scheduler.get_lr()[0] if self.scheduler is not None else self.cfg.optimizer.lr,
@@ -124,11 +124,12 @@ class ContinualDistillationTrainer(DistillationTrainer):
                  'k_gain_step': s_metrics['knowledge_gain_step'],
                  'k_loss_step': s_metrics['knowledge_loss_step'],
                  }
-        log = {**loss, **stats}
+        log = {**loss, **s_metrics}
         if e == self.cfg.max_epochs:
             log['dist_step_delta'] = s_metrics['dist_delta_step']
             log['dist_step_k_gain'] = s_metrics['knowledge_gain_step']
             log['dist_step_k_loss'] = s_metrics['knowledge_loss_step']
+        log['lr'] = self.scheduler.get_lr()[0] if self.scheduler is not None else self.cfg.optimizer.lr
         logging.info(f'Log stats: {log}')
         wandb.log(log, step=t*self.cfg.max_epochs + e+1)
 

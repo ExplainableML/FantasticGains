@@ -317,8 +317,8 @@ def get_model(id, models_list, return_acc=False):
 
 
 def get_teacher_student_id(cfg, experiment_id):
-    students = [5, 40, 2]
-    teachers = [268, 182, 310, 10, 302, 209, 234, 77, 145, 12, 239]
+    students = [41, 5, 26, 302, 40, 130, 214, 2, 160]
+    teachers = [234, 302, 77]
 
     s_t = []
     for s in students:

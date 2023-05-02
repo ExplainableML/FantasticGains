@@ -1,21 +1,21 @@
 #!/bin/bash
 #SBATCH --cpus-per-task=4
-#SBATCH --partition=gpu-2080ti
+#SBATCH --partition=gpu-2080ti-preemptable
 #SBATCH --gres=gpu:1
 #SBATCH --nodes=1
 #SBATCH --mem=20G
 #SBATCH --time=2-00:00
 #SBATCH -o /mnt/qb/work/akata/aoq877/repsssl/LOGS/xekl_dist-j-%j.out
-#SBATCH --array=0-31
+#SBATCH --array=0-2
 
 # teachers: 77,66,136,157,94,43
 # diverse teachers: 124,214,291,101,232,79,145,151,26,277,77,109,182,299,36,130,2,292,211,234
 # KL Missing
-#students=( 41 )
-#teachers=( 234 )
+students=( 131 5   2  )
+teachers=( 77  302 77 )
 # XEKL Missing
-students=( 41 )
-teachers=( 151 )
+#students=( 41 )
+#teachers=( 151 )
 echo "${students[$SLURM_ARRAY_TASK_ID]}"
 echo "${teachers[$SLURM_ARRAY_TASK_ID]}"
 
@@ -61,9 +61,9 @@ python main_distillation.py \
             ++on_flip.pos='distill' \
             ++on_flip.neg='distill' \
             ++on_flip.neut='distill' \
-            ++student_id=0 \
-            ++teacher_id=0 \
-            ++search_id="$SLURM_ARRAY_TASK_ID" \
+            ++student_id="${students[$SLURM_ARRAY_TASK_ID]}" \
+            ++teacher_id="${teachers[$SLURM_ARRAY_TASK_ID]}" \
+            ++search_id=None \
             ++max_epochs=20 \
             ++tag='KL_Dist'
 

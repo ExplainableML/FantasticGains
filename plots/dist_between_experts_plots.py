@@ -596,6 +596,31 @@ def transfer_rate_plot(appr='KL+MT_Dist'):
     plt.show()
 
 
+def full_imagenet_table():
+    students = [41, 5, 26, 131, 40, 130, 214, 2, 160]
+    teachers = [234, 302, 77]
+    data = load_wandb_runs('2_distill_between_experts')
+    data = data.loc[[data['teacher_id'][i] in teachers for i in data.index]]
+    data = data.loc[[data['student_id'][i] in students for i in data.index]]
+    imagenet = data.loc[[data['data'][i]['dataset'] == 'imagenet' for i in data.index]]
+    subset = data.loc[[data['data'][i]['dataset'] != 'imagenet' for i in data.index]]
+    imagenet = imagenet[['tag', 'student_name', 'teacher_name', 'dist_delta']]
+    subset = subset[['tag', 'student_name', 'teacher_name', 'dist_delta']]
+    imagenet = imagenet.groupby(by=['tag', 'student_name'])
+    subset = subset.groupby(by=['tag', 'student_name'])
+
+    approaches = ['KL_Dist', 'KL+MT_Dist', 'KL+MT_u_Dist']
+    rows = []
+    header = 'Approaches | ' + ' | '.join(np.unique(imagenet['student_name']))
+    for a, approach in approaches:
+        tmp = imagenet.loc[imagenet['tag'] == approach].sortby(by=['student_name'])
+        row = approach + ' & ' + ' & '.join(tmp['dist_delta'].values)
+        print(row)
+        rows.append(row)
+    test
+
+
+
 if __name__ == "__main__":
     #get_correlation_heatmaps_teacher()
     #get_correlation_heatmaps()
@@ -607,7 +632,9 @@ if __name__ == "__main__":
     #plot_size_influence('KL+MT_Dist')
     #student_feature_importenace()
 
-    pos_dist_delta_2()
+    #pos_dist_delta_2()
     #dist_deltas_plot()
     #improvement_dist_plot()
     #transfer_rate_plot()
+
+    full_imagenet_table()

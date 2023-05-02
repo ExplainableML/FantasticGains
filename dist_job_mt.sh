@@ -6,18 +6,18 @@
 #SBATCH --mem=20G
 #SBATCH --time=2-00:00
 #SBATCH -o /mnt/qb/work/akata/aoq877/repsssl/LOGS/mt_dist-j-%j.out
-#SBATCH --array=0-32
+#SBATCH --array=0-2
 
 # teachers: 77,66,136,157,94,43
 # diverse teachers: 124,214,291,101,232,79,145,151,26,277,77,109,182,299,36,130,2,292,211,234
 # students=( 250 186 53 1 203 113 274 9 242 258 22 185 88 261 36 30 219 234 119 129 160 134 272 32 235 29 )
 # teachers=( 24 88 17 12 143 2 33 82 77 70 12 139 95 43 39 161 19 89 30 242 157 232 76 9 214 176 )
 # Missing MT
-students=( 5   5   5   235 235 235 9   9   9 )
-teachers=( 211 152 291 211 36  291 211 101 291)
+students=( 214 40  40 )
+teachers=( 234 302 234 )
 # Missing MT_u
-# students=( 214 171 )
-# teachers=( 211 36  )
+#students=( 41  41 131 214 2   2   160)
+#teachers=( 234 77 234 77  234 302 234)
 echo "${students[$SLURM_ARRAY_TASK_ID]}"
 echo "${teachers[$SLURM_ARRAY_TASK_ID]}"
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
@@ -56,15 +56,15 @@ python main_distillation.py \
             ++loss.kd_T=1 \
             ++loss.k=1000 \
             ++loss.gamma=1 \
-            ++loss.strat='most-conf_u' \
+            ++loss.strat='most-conf' \
             ++optimizer.lr=0.0001 \
             ++on_flip.pos='distill' \
             ++on_flip.neg='distill' \
             ++on_flip.neut='distill' \
-            ++student_id=0 \
-            ++teacher_id=0 \
-            ++search_id="$SLURM_ARRAY_TASK_ID" \
+            ++student_id="${students[$SLURM_ARRAY_TASK_ID]}" \
+            ++teacher_id="${teachers[$SLURM_ARRAY_TASK_ID]}" \
+            ++search_id=None \
             ++max_epochs=20 \
-            ++tag='KL+MT_u_Dist'
+            ++tag='KL+MT_Dist'
 
 
