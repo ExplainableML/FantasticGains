@@ -9,27 +9,7 @@ Finally, we provide additional insights into knowledge transfer from multiple mo
 
 ![Project Idea](images/dp_dist_figure.jpg)
 
-This repository contains all code to reproduce the results of our paper. 
-
----
-## Requirements
-* torch
-* torchvision
-* tqdm
-* einops
-* wandb
-* pytorch-lightning
-* lightning-bolts
-* torchmetrics
-* scipy
-* timm
-
-**Optional**:
-* nvidia-dali
-* matplotlib
-* seaborn
-* pandas
-* umap-learn
+This repository contains all code to reproduce the results of our paper.
 
 ---
 ## Requirements
@@ -79,14 +59,14 @@ We conduct a large-scale experimental study to assess the limits and shortcoming
 |xekl | KL-Div + Cross-Entropy Distillation | [:clipboard:](https://api.wandb.ai/links/luth/rw7pgynj) [:clipboard:](https://api.wandb.ai/links/luth/y3p0ocpu) [:clipboard:](https://api.wandb.ai/links/luth/slu8k44k) [:clipboard:](https://api.wandb.ai/links/luth/hps8l6uv) | [:clipboard:](https://api.wandb.ai/links/luth/j1zgqoyr) |
 
 *Contrastive Knowledge Distillation*
-| Name      | Approach      | W&B Report |
-| ------------- |---------|-----------|
+| Name      | Approach      | Parameter Searches | ImageNet<sub>10%</sub> Study |
+| ------------- |---------|-----------|-----------|
 |cd | Simple Contrastive Distillation | [:clipboard:](https://api.wandb.ai/links/luth/nqo1rjme) | [:clipboard:](https://api.wandb.ai/links/luth/s9pf6txx) |
 |crd | Contrastive Representation Distillation [:page_facing_up:](https://arxiv.org/abs/1503.02531) | [:clipboard:](https://wandb.ai/luth/2-2_contrastive_distillation/reports/Contrastive-Represenation-Distillation-Approach--VmlldzozMzk0NjE3?accessToken=otkanajhn9dguo9by0xe3y2stl9hv2i7les4u4gqm11z6f4wtke8llq8bknvy7c3) | [:clipboard:](https://api.wandb.ai/links/luth/c4rar9pa) |
 
 *Continual Learning Based Distillation Approaches*
-| Name      | Approach      | W&B Report |
-| ------------- |---------|-----------|
+| Name      | Approach      | Parameter Searches | ImageNet<sub>10%</sub> Study |
+| ------------- |---------|-----------|-----------|
 |xekl_mcl | Momentum-based Weight Interpolation [:page_facing_up:](https://arxiv.org/abs/2211.03186) | [:clipboard:](https://api.wandb.ai/links/luth/16rfkl0g) [:clipboard:](https://api.wandb.ai/links/luth/bi1f65zw) [:clipboard:](https://api.wandb.ai/links/luth/z8xhf7dr) | [:clipboard:](https://wandb.ai/luth/2_distill_between_experts/reports/5-XE-KL-MCL-Distillation-for-Distilling-Knowledge-Between-Experts--Vmlldzo0MDI5Mjk0?accessToken=dmllgtz6ncey8ljil30rvlca73bhdclp98bly8cz1p8kk8xxz5kw40iob06blawe) |
 |kl_dp  | Data Partitioning Distillation | [:clipboard:](https://api.wandb.ai/links/luth/9jvdbrnt) [:clipboard:](https://api.wandb.ai/links/luth/vsino0vn) [:clipboard:](https://api.wandb.ai/links/luth/p2o6o0s9) | [:clipboard:](https://api.wandb.ai/links/luth/yndr09ii) [:clipboard:](https://api.wandb.ai/links/luth/l4jsbcj2) |
 
