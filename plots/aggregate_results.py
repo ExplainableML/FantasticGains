@@ -1,13 +1,7 @@
 import wandb
-import json
+
 import pandas as pd
 import numpy as np
-from mycolorpy import colorlist as mcp
-import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
-from matplotlib.gridspec import GridSpec
-import seaborn as sns
-import matplotlib
 
 arch_strings = {'transformer': 'Transformer', 'cnn': 'CNN', 'mlp': 'MLP'}
 appr_strings = {'KL_Dist': 'KL Distillation', 'XEKL_Dist': 'XE-KL Distillation',
@@ -20,23 +14,50 @@ all_students = {'transformer': [41, 7, 5, 46, 26, 171, 285, 144, 261, 63, 237],
 
 
 def merge_two_dicts(x, y):
+    """Given two dicts, merge them into a new dict.
+
+    :param x: dict
+    :param y: dict
+
+    :Returns: dict
+    """
     z = x.copy()  # start with keys and values of x
     z.update(y)  # modifies z with keys and values of y
     return z
 
 
-def load_wandb_runs(project):
+def load_wandb_runs(project, history=False):
+    """Load all runs from a wandb project.
+
+    :param project: project name
+    :param history: whether to load history or not
+
+    :Returns: pandas dataframe
+    """
     api = wandb.Api()
 
     # Project is specified by <entity/project-name>
     runs = api.runs(f"luth/{project}")
 
-    summary_list, config_list, name_list = [], [], []
+    summary_list, config_list, name_list, history_list = [], [], [], []
     for run in runs:
         # .summary contains the output keys/values for metrics like accuracy.
         #  We call ._json_dict to omit large files
         summary_list.append(run.summary._json_dict)
 
+        if history:
+            metrics = ['knowledge_gain', 'knowledge_loss', 'dist_delta']
+            tmp = {}
+            if run.state in ['running', 'finished']:
+                for m in metrics:
+                    tmp[f'{m}_hist']=[]
+                    for i, row in run.history().iterrows():
+                        if i > 0:
+                            try:
+                                tmp[f'{m}_hist'].append(row[m])
+                            except KeyError:
+                                pass
+            history_list.append(tmp)
         # .config contains the hyperparameters.
         #  We remove special values that start with _.
         config_list.append(
@@ -49,16 +70,28 @@ def load_wandb_runs(project):
     data = []
     for i in range(len(config_list)):
         tmp = merge_two_dicts(config_list[i], summary_list[i])
+        if history:
+            tmp = merge_two_dicts(tmp, history_list[i])
         data.append(merge_two_dicts({'name': name_list[i]}, tmp))
     runs = pd.DataFrame(data)
     return runs
 
 
 def get_summary_stats(array):
+    """Get summary statistics of an array.
+
+    :param array: array
+
+    :Returns: list of summary statistics (max, min, mean, std, q25, q75)
+    """
     return [np.max(array), np.min(array), np.mean(array), np.std(array), np.quantile(array, 0.25), np.quantile(array, 0.75)]
 
 
-def get_best_students():
+def aggregate_results():
+    """Aggregate results from wandb runs and save to a csv file.
+
+    :Returns: None
+    """
     data = load_wandb_runs('2_distill_between_experts')
     data = data.dropna(subset=['dist_delta'])
 
@@ -86,4 +119,4 @@ def get_best_students():
 
 
 if __name__ == "__main__":
-    get_best_students()
+    aggregate_results()

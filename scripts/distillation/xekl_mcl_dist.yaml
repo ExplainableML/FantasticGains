@@ -11,7 +11,7 @@ hydra:
   run:
     dir: .
 
-name: "kl-distillation-imagenet"
+name: "xekl-mcl-distillation-imagenet"
 data:
   dataset: imagenet_subset
   n_data: 128117
@@ -24,19 +24,17 @@ ffcv_augmentation: 'default'
 ffcv_dtype: 'float16'
 
 loss:
-  name: 'xekl'
-  alpha: 1
+  name: 'xekl_mcl'
+  alpha: 0.68
   kd_T: 1
-  k: 1000
-  gamma: 0
-  strat: None
-  tau: None
-  N: None
+  k: 100
+  tau: 0.9999
+  N: 2
 
 optimizer:
   name: "SGD"
   batch_size: 'auto'
-  lr: 0.0001
+  lr: 0.01
   weight_decay: 1e-4
   momentum: 0.9
 
@@ -55,7 +53,7 @@ teacher_id: 2
 
 on_flip:
   pos: 'distill'
-  neg: 'distill'
+  neg: 'nothing'
   neut: 'distill'
 
 # overwrite PL stuff

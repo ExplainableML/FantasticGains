@@ -15,6 +15,24 @@ from distillation.dist_utils import AverageMeter, param_string, norm_batch
 
 
 class BaseDisitllationTrainer:
+    """This class implements the base distillation trainer
+
+    Attributes:
+        cfg: Experiment configuration
+        teacher_name: The name of the teacher model
+        student_name: The name of the student model
+        student: The student model
+        cfg_s: The configuration of the student model
+        teacher: The teacher model
+        cfg_t: The configuration of the teacher model
+        module_list: The list of modules to be trained
+        train_loader: The training data loader
+        val_loader: The validation data loader
+        device: The device to be used for training
+        opt: The optimizer
+        scheduler: The learning rate scheduler
+        checkpoint_path: The path to the checkpoint
+    """
     def __init__(self, cfg, teacher_name, student_name):
         self.cfg = cfg
         self.student_name = student_name

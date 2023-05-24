@@ -18,36 +18,44 @@ data:
   train_path: "/mnt/qb/akata/shared/ffcv_imagenet100/train_500_0.50_90.ffcv"
   val_path: "/mnt/qb/akata/shared/ffcv_imagenet100/val_500_0.50_90.ffcv"
   format: "ffcv"
-  num_workers: 36
+  num_workers: 9
+precache: True
+ffcv_augmentation: 'default'
+ffcv_dtype: 'float16'
+
 loss:
   name: 'cd'
   alpha: 0
   beta: 10
   gamma: 0.1
   kd_T: 1
+
 optimizer:
   name: "SGD"
-  batch_size: 128
+  batch_size: 'auto'
   lr: 0.0001
   weight_decay: 1e-4
   momentum: 0.9
+
 scheduler:
-  name: "warmup_cosine"
-  warmup: 5
+  name: None
+  warmup: 0
+
 checkpoint:
   enabled: True
-  dir: "trained_models"
+  dir: "/mnt/qb/akata/aoq877/trained_models/trained_models"
   frequency: 1
+
 on_flip:
   pos: 'distill'
   neg: 'distill'
   neut: 'distill'
 
 # overwrite PL stuff
-max_epochs: 100
-devices: [0, 1, 2, 3]
+max_epochs: 20
+devices: [0]
 sync_batchnorm: True
 accelerator: "gpu"
 strategy: "dp"
 precision: 16
-seed: 0
+seed: 123

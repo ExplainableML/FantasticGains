@@ -1,24 +1,20 @@
 import os
-
 import torch
 import ffcv
 import logging
-import socket
+import ffcv_transforms
 
 import numpy as np
 
 from ffcv.loader import OrderOption
 
-import solo.ffcv_transforms as ffcv_transforms
-
 
 def get_ffcv_val_loader(model_cfg, device, cfg, batch_size=None):
     """Initialize an ffcv dataloader for the validation dataset
 
-    Args:
-        model_cfg: Default config of the pretrained model
-        device: Compute device
-        cfg: Config
+    :param model_cfg: Default config of the pretrained model
+    :param device: Compute device
+    :param cfg: Config
 
     Returns: data_loader
     """
@@ -74,7 +70,15 @@ def get_ffcv_val_loader(model_cfg, device, cfg, batch_size=None):
 
 
 def get_ffcv_train_loader(model_cfg, device, cfg, batch_size=None):
+    """Initialize an ffcv dataloader for the training dataset
 
+    :param model_cfg: Default config of the pretrained model
+    :param device: Compute device
+    :param cfg: Config
+    :param batch_size: Batch size
+
+    :Returns: data_loader
+    """
     num_loaders = sum([aug_list['num_crops'] for aug_list in cfg.augmentations])
 
     aug_dicts = {
@@ -182,6 +186,12 @@ def get_ffcv_train_loader(model_cfg, device, cfg, batch_size=None):
 
 
 def get_cls_pos_neg(train_loader):
+    """Get positive and negative samples for each class
+
+    :param train_loader: Training data loader
+
+    :Returns: cls_positive, cls_negative, idx_map, num_samples
+    """
     labels = []
     indices = []
     for _, y, idxs in train_loader:
@@ -209,6 +219,15 @@ def get_cls_pos_neg(train_loader):
 
 
 def get_contrast_idx(index, target, cls_negative, k):
+    """Get contrastive samples for each sample
+
+    :param index: Sample index
+    :param target: Sample target
+    :param cls_negative: Negative samples for each class
+    :param k: Number of negative samples
+
+    :Returns: sample_idx
+    """
     index = index.cpu().tolist()
     target = target.cpu().tolist()
     sample_idx = []

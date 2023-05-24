@@ -1,7 +1,7 @@
+import os
 import torch
 import logging
 
-import torch.nn.functional as F
 import numpy as np
 from torchvision import transforms
 
@@ -13,6 +13,16 @@ from .flip_study import get_flips, get_dist_improvement
 
 
 def get_val_acc(model, loader, cfg, linear=None, theta_slow=None):
+    """Get validation accuracy of a model
+
+    :param model: model to evaluate
+    :param loader: validation loader
+    :param cfg: config
+    :param linear: linear layer to apply to model output
+    :param theta_slow: slow weights to load into model
+
+    :Returns: validation accuracy
+    """
     preds = []
     true_y = []
     model.eval()
@@ -36,6 +46,18 @@ def get_val_acc(model, loader, cfg, linear=None, theta_slow=None):
 
 
 def get_val_preds(model, loader, cfg, linear=None, theta_slow=None, return_logits=False, return_truey=False):
+    """Get validation predictions of a model
+
+    :param model: model to evaluate
+    :param loader: validation loader
+    :param cfg: config
+    :param linear: linear layer to apply to model output
+    :param theta_slow: slow weights to load into model
+    :param return_logits: whether to return logits
+    :param return_truey: whether to return true labels
+
+    :Returns: validation predictions
+    """
     preds = []
     true_y = []
     model.eval()
@@ -65,6 +87,20 @@ def get_val_preds(model, loader, cfg, linear=None, theta_slow=None, return_logit
 
 
 def get_val_metrics(student, teacher, loader, cfg, zero_preds, linear_s=None, linear_t=None, theta_slow=None, zero_preds_step=None):
+    """Get validation metrics of a student and teacher model
+
+    :param student: student model
+    :param teacher: teacher model
+    :param loader: validation loader
+    :param cfg: config
+    :param zero_preds: zero predictions of the student model
+    :param linear_s: linear layer to apply to student model output
+    :param linear_t: linear layer to apply to teacher model output
+    :param theta_slow: slow weights to load into student model
+    :param zero_preds_step: zero predictions of the student model of the previous step (for sequential distillation)
+
+    :Returns: validation metrics
+    """
     preds_s = []
     preds_t = []
     true_y = []
@@ -101,6 +137,17 @@ def get_val_metrics(student, teacher, loader, cfg, zero_preds, linear_s=None, li
 
 
 def get_ensemble_metrics(model_a, model_b, loader, cfg_a, cfg_b, zero_preds):
+    """Get validation metrics of an ensemble of two models
+
+    :param model_a: first model
+    :param model_b: second model
+    :param loader: validation loader
+    :param cfg_a: config of first model
+    :param cfg_b: config of second model
+    :param zero_preds: zero predictions of the second model
+
+    :Returns: validation metrics
+    """
     preds = []
     true_y = []
     model_a.eval()
@@ -125,12 +172,22 @@ def get_ensemble_metrics(model_a, model_b, loader, cfg_a, cfg_b, zero_preds):
             true_y += labels.cpu().tolist()
             preds += batch_preds
 
-    metrics = get_metrics(zero_preds, preds, true_y)
+    metrics = get_metrics(zero_preds, preds, preds, true_y)
 
     return metrics
 
 
 def get_metrics(zero_preds, preds, teach_preds, true_y, train=False):
+    """Get validation metrics of a student and teacher model
+
+    :param zero_preds: zero predictions of the student model
+    :param preds: predictions of the student model
+    :param teach_preds: predictions of the teacher model
+    :param true_y: ground truth labels
+    :param train: whether the metrics are for training or validation
+
+    :Returns: validation metrics
+    """
     acc_s = accuracy_score(true_y, preds) * 100
     acc_st = accuracy_score(true_y, zero_preds) * 100
     gain_loss = get_flips(zero_preds, preds, true_y)
@@ -149,7 +206,18 @@ def get_metrics(zero_preds, preds, teach_preds, true_y, train=False):
     return metrics
 
 
-def get_batch_size(teacher_name, student_name, device, loss_name, max_batch_size=None, num_iterations=5) -> int:
+def get_batch_size(teacher_name, student_name, device, loss_name, max_batch_size=None, num_iterations=5):
+    """Get the maximum batch size for a given teacher and student model
+
+    :param teacher_name: name of the teacher model
+    :param student_name: name of the student model
+    :param device: device to run the models on
+    :param loss_name: name of the loss function
+    :param max_batch_size: maximum batch size to test
+    :param num_iterations: number of iterations to test
+
+    :Returns: maximum batch size
+    """
     logging.info(f't: {teacher_name} - s: {student_name}')
     student, _ = init_timm_model(student_name, device)
     teacher, _ = init_timm_model(teacher_name, device)
@@ -224,22 +292,41 @@ class AverageMeter(object):
 
 
 def param_string(cfg):
+    """Create a string from the parameters of a config file
+
+    :param cfg: config file
+
+    :Returns: string of parameters
+    """
     loss_params = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
     loss_params_string = '_'.join([f'{key}_{value}' for key, value in loss_params.items()])
     return loss_params_string
 
 
 def norm_batch(batch, cfg):
+    """Normalize a batch of images
+
+    :param batch: batch of images
+    :param cfg: model config
+
+    :Returns: normalized batch
+    """
     mean = np.array(cfg['mean'])
     std = np.array(cfg['std'])
     norm = transforms.Normalize(mean=mean, std=std)
     batch = norm(torch.div(batch, 255))
-    # for i, img in enumerate(batch):
-    #    batch[i] = norm(torch.div(img, 255))
     return batch
 
 
 def get_flip_masks(out_s, out_t, labels):
+    """Get the flip masks for a batch of images
+
+    :param out_s: output of the student model
+    :param out_t: output of the teacher model
+    :param labels: labels of the batch
+
+    :Returns: flip masks
+    """
     _, s_preds = torch.max(out_s, 1)
     _, t_preds = torch.max(out_t, 1)
     mask_pos = torch.logical_and(torch.eq(t_preds, labels), torch.ne(s_preds, labels))
@@ -249,63 +336,15 @@ def get_flip_masks(out_s, out_t, labels):
     return mask_pos, mask_neg, mask_neut
 
 
-def random_search(cfg, search_id=123):
-    #runs = [(211, 132), (24, 160), (33, 261), (28, 232), (2, 171), (51, 267)]
-    runs = [(77, 242), (95, 88)]
-    param_grid = {
-        'gamma': [1, 1.5, 2, 5, 10],
-    }
-
-    f = 1
-
-    np.random.seed(int(search_id / len(runs)) * f)
-    cfg.loss.gamma = float(np.random.choice(param_grid['gamma']))
-    cfg.teacher_id = runs[search_id % len(runs)][0]
-    cfg.student_id = runs[search_id % len(runs)][1]
-
-    return cfg
-
-
-def grid_search(cfg, search_id=123):
-    runs = [(77, 242), (95, 88)]
-    param_grid = {
-        'gamma': [1, 1.5, 2, 5, 10],
-    }
-
-    grid = []
-    for r in runs:
-        for gamma in param_grid['gamma']:
-            grid.append([r, gamma])
-    print(f'Len Grid: {len(grid)}')
-    params = grid[search_id]
-    cfg.loss.gamma = float(params[1])
-    cfg.teacher_id = int(params[0][0])
-    cfg.student_id = int(params[0][1])
-
-    return cfg
-
-
-def contdist_grid_search(cfg, search_id=0):
-    students = [261, 160, 132]
-    param_grid = {
-        'N': [2, 10, 50, 100, 200],
-        'tau': [0.99, 0.999, 0.9999]
-    }
-
-    grid = []
-    for s in students:
-        for n in param_grid['N']:
-            for t in param_grid['tau']:
-                grid.append([s, n, t])
-    params = grid[search_id]
-    cfg.loss.N = float(params[1])
-    cfg.loss.tau = float(params[2])
-    cfg.contdist.student_id = int(params[0])
-
-    return cfg
-
-
 def get_model(id, models_list, return_acc=False):
+    """Get the model name, type and parameters from the models list
+
+    :param id: id of the model
+    :param models_list: list of models
+    :param return_acc: whether to return the top1 accuracy of the model
+
+    :Returns: model name, type, parameters and optionally top1 accuracy
+    """
     name = models_list['modelname'][id]
     type = models_list['modeltype'][id]
     params = models_list['modelparams'][id]
@@ -317,6 +356,13 @@ def get_model(id, models_list, return_acc=False):
 
 
 def get_teacher_student_id(cfg, experiment_id):
+    """Get the teacher and student id from the experiment id
+
+    :param cfg: experiment config
+    :param experiment_id: experiment id
+
+    :Returns: model config with teacher and student id
+    """
     students = [41, 5, 26, 302, 40, 130, 214, 2, 160]
     teachers = [234, 302, 77]
 
@@ -327,5 +373,59 @@ def get_teacher_student_id(cfg, experiment_id):
 
     cfg.teacher_id = int(s_t[experiment_id][1])
     cfg.student_id = int(s_t[experiment_id][0])
+
+    return cfg
+
+
+def soup_student_weights(student, teachers, cfg):
+    """Average (soup) the weights of student models distilled with different teacher models
+
+    :param student: student model
+    :param teachers: list of teacher models
+    :param cfg: experiment config
+
+    :Returns: souped student model weights
+    """
+    logging.info(f'Souping the weights of {student} distilled with {teachers}')
+    state_dicts = []
+    for teacher in teachers:
+        path = os.path.join(
+            cfg.checkpoint.dir, cfg.data.dataset + f'_ffcv_{cfg.ffcv_dtype}', cfg.ffcv_augmentation, cfg.loss.name,
+            param_string(cfg.loss), f'{teacher}>{student}', f'lr_{cfg.optimizer.lr}',
+            f'batch_size_{cfg.optimizer.batch_size}', param_string(cfg.scheduler), f'seed_{cfg.seed}',
+            param_string(cfg.on_flip))
+        logging.info(f'Looking for checkpoint at {path}')
+        ckp = torch.load(path + '/student_checkpoint.pt')
+        state_dicts.append(ckp['model_state_dict'])
+        logging.info(f'Loaded checkpoint for {teacher}')
+
+    soup_state_dict = {}
+    for key in state_dicts[0].keys():
+        weights = torch.randn([len(teachers)]+list(state_dicts[0][key].shape))
+        for i in range(len(teachers)):
+            weights[i] = state_dicts[i][key]
+        soup_state_dict[key] = torch.mean(weights, dim=0)
+    return soup_state_dict
+
+
+def parse_cfg(cfg: DictConfig):
+    """Parse the config file
+
+    :param cfg: config file
+
+    :Returns: parsed config file
+    """
+    # adjust lr according to batch size
+    cfg.num_nodes = OmegaConf.select(cfg, "num_nodes", default=1)
+
+    if cfg.strategy == 'ddp':
+        scale_factor = cfg.optimizer.batch_size * len(cfg.devices) * cfg.num_nodes / 256
+    else:
+        scale_factor = cfg.optimizer.batch_size / 256
+
+    cfg.optimizer.lr = cfg.optimizer.lr * scale_factor
+
+    if 'mcl' in cfg.loss.name:
+        cfg.loss.N = cfg.loss.N / scale_factor
 
     return cfg

@@ -1,25 +1,22 @@
 import torch
-import timm
 import logging
 
 import numpy as np
 
-from omegaconf import DictConfig, OmegaConf
-from pytorch_lightning import Trainer, seed_everything
 from sklearn.metrics import accuracy_score
 from torch.cuda.amp import GradScaler, autocast
 from scipy.stats import entropy
-
-from .data import get_ffcv_val_loader
 
 
 def get_predictions(model_a, cfg_a, data_loader, model_b, cfg_b, top_n=1):
     """Get predictions of up to two models
 
-    Args:
-        model_a:  Model a
-        data_loader: Data loader
-        model_b: Model b (optional)
+    :param model_a:  Model a
+    :param cfg_a: Config of model a
+    :param data_loader: Data loader
+    :param model_b: Model b (optional)
+    :param cfg_b: Config of model b (optional)
+    :param top_n: Number of top predictions to consider (default: 1)
 
     Returns: tuple
         - preds_a: Set of predictions for model_a
@@ -71,10 +68,9 @@ def get_predictions(model_a, cfg_a, data_loader, model_b, cfg_b, top_n=1):
 def get_flips(preds_a, preds_b, true):
     """calculate positive and negative flips for two sets of predictions
 
-    Args:
-        preds_a: Predictions of the first model
-        preds_b: Predictions of the second model
-        true: True labels
+    :param preds_a: Predictions of the first model
+    :param preds_b: Predictions of the second model
+    :param true: True labels
 
     Returns: dict
         - pos_abs: Absolute number of positive flips
@@ -98,58 +94,17 @@ def get_flips(preds_a, preds_b, true):
     return {'pos_abs': p_flips, 'neg_abs': n_flips, 'pos_rel': p_flips/len(true)*100, 'neg_rel': n_flips/len(true)*100}
 
 
-def compare_models(modelname_a, modelname_b, cfg: DictConfig):
-    """Compare predictions of two models and calculate positive and negative flips
+def get_flips_per_class(preds_a, preds_b, true_y):
+    """Calculate positive and negative flips per class
 
-    Args:
-        modelname_a: Name of model_a
-        modelname_b: Name of model_b
-        cfg: Config
+    :param preds_a: Predictions of the first model
+    :param preds_b: Predictions of the second model
+    :param true_y: True labels
 
     Returns: tuple
-        - flips: Dict of relative/absolut positive/negative flips
-        - acc: List of model accuracies
-
+        - pos_flips: Number of positive flips per class
+        - neg_flips: Number of negative flips per class
     """
-    # maintain a constant seed for inference
-    seed_everything(123)
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
-    # initialize model_a (pretrained from timm)
-    model_a = timm.create_model(modelname_a, pretrained=True)
-    model_a.to(device)
-    # get required image size
-    cfg_a = model_a.default_cfg
-    #if not cfg.performance.disable_channel_last:
-    #    model_a = model_a.to(memory_format=torch.channels_last)
-
-    # initialize model_a (pretrained from timm)
-    model_b = timm.create_model(modelname_b, pretrained=True)
-    model_b.to(device)
-    # get required image size
-    cfg_b = model_b.default_cfg
-    #if not cfg.performance.disable_channel_last:
-    #    model_b = model_b.to(memory_format=torch.channels_last)
-
-    logging.info(f'Model default_cfgs: \n model_a: {model_a.default_cfg} \n model_b: {model_b.default_cfg}')
-
-    # get dataloader for model_a
-    loader_a = get_ffcv_val_loader(cfg_a, device, cfg)
-    logging.info(f'res_a: {cfg_a["input_size"]}, res_b: {cfg_b["input_size"]}')
-
-    preds_a, preds_b, true_y, acc = get_predictions(model_a, cfg_a, loader_a, model_b, cfg_b,  top_n=cfg.topn)
-
-
-    # calculate flips
-    flips = get_flips(preds_a, preds_b, true_y)
-
-    # delete models and loader from gpu cache
-    del model_a, model_b, loader_a
-    torch.cuda.empty_cache()
-    return flips, acc
-
-
-def get_flips_per_class(preds_a, preds_b, true_y):
     pos_flips = np.zeros((len(true_y), 1000))
     neg_flips = np.zeros((len(true_y), 1000))
     for i in range(len(true_y)):
@@ -163,7 +118,14 @@ def get_flips_per_class(preds_a, preds_b, true_y):
 
 
 def get_top_p_percent_classes(pos_class_flips, p):
-    sorted_classes = np.argsort(pos_class_flips)[::-1]
+    """Calculate the number of classes that account for the top p% of positive flips
+
+    :param pos_class_flips: Number of positive flips per class
+    :param p: Percentage of positive flips to be accounted for
+
+    Returns: Set of classes that account for the top p% of positive flips
+    """
+    sorted_classes = np.argsort(pos_class_flips)[::-1]  # sort classes by number of positive flips
 
     k = []
     for p_share in p:
@@ -177,18 +139,31 @@ def get_top_p_percent_classes(pos_class_flips, p):
 
 
 def get_topk_class_sim(pos_class_flips, k=None, p=None):
-    assert not(k is None and p is None), 'Please pass either k or p'
-    sorted_classes = np.argsort(pos_class_flips)[::-1]
+    """Calculate the similarity between a) the top-k classes containing the most porisitve flips (if k is passed) or
+    b) the classes containing the top-p% of positive flips (if p is passed)
 
+    :param pos_class_flips: Number of positive flips per class
+    :param k: Number of classes to be considered
+    :param p: Percentage of positive flips to be accounted for
+
+    Returns: tuple
+        - k: Set of classes used for the calculation
+        - avg_sim: Average similarity between the classes
+        - max_sim: Maximum similarity between the classes
+        - share_of_flips: Share of positive flips accounted for by the classes
+    """
+    assert not(k is None and p is None), 'Please pass either k or p'
+    sorted_classes = np.argsort(pos_class_flips)[::-1]  # sort classes by number of positive flips
+    # get the classes that account for the top p% of positive flips (if p is passed)
     if k is None:
         k = get_top_p_percent_classes(pos_class_flips, p)
     max_k = max(k)
-
+    # get the class names
     with open("files/imagenet1000_clsidx_to_labels.txt") as f:
         idx2label = eval(f.read())
-
+    # get the class names of the top-k classes
     class_names = [idx2label[c] for c in sorted_classes[:max_k]]
-
+    # calculate the similarity between the classes using CLIP embeddings of the class names
     import clip
     device = torch.device('cuda')
     model, _ = clip.load('ViT-B/32', device, jit=False)
@@ -212,6 +187,16 @@ def get_topk_class_sim(pos_class_flips, k=None, p=None):
 
 
 def get_dist_improvement(preds, zero_preds, teach_preds, true_y, p=[2, 5, 20, 50, 100]):
+    """Calculate the improvement of the student relative to the share of positive flips
+
+    :param preds: Predictions of the student model
+    :param zero_preds: Predictions of the student before the distillation
+    :param teach_preds: Predictions of the teacher model
+    :param true_y: True labels
+    :param p: Percentage of positive flips to be accounted for
+
+    Returns: metrics of the improvement (dict)
+    """
     pos_flips, _ = get_flips_per_class(zero_preds, teach_preds, true_y)
     dist_flips, _ = get_flips_per_class(zero_preds, preds, true_y)
 

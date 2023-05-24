@@ -11,7 +11,7 @@ hydra:
   run:
     dir: .
 
-name: "kl-distillation-imagenet"
+name: "kl-pd-distillation-imagenet"
 data:
   dataset: imagenet_subset
   n_data: 128117
@@ -24,12 +24,12 @@ ffcv_augmentation: 'default'
 ffcv_dtype: 'float16'
 
 loss:
-  name: 'xekl'
+  name: 'xekl_mt'
   alpha: 1
   kd_T: 1
   k: 1000
-  gamma: 0
-  strat: None
+  gamma: 1
+  strat: 'most-conf'
   tau: None
   N: None
 

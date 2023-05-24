@@ -11,58 +11,41 @@ hydra:
   run:
     dir: .
 
-name: "kl-distillation-imagenet"
+name: "flips-study-imagenet"
 data:
-  dataset: imagenet_subset
-  n_data: 128117
+  dataset: imagenet100
   train_path: "/mnt/qb/akata/shared/ffcv_imagenet100/train_500_0.50_90.ffcv"
   val_path: "/mnt/qb/akata/shared/ffcv_imagenet100/val_500_0.50_90.ffcv"
   format: "ffcv"
   num_workers: 9
 precache: True
-ffcv_augmentation: 'default'
-ffcv_dtype: 'float16'
-
-loss:
-  name: 'xekl'
-  alpha: 1
-  kd_T: 1
-  k: 1000
-  gamma: 0
-  strat: None
-  tau: None
-  N: None
+ffcv_augmentation: True
+ffcv_dtype: "float16"
 
 optimizer:
-  name: "SGD"
-  batch_size: 'auto'
-  lr: 0.0001
-  weight_decay: 1e-4
-  momentum: 0.9
+  name: None
+  batch_size: 128
+  lr: None
+  weight_decay: None
+
+loss:
+  name: None
 
 scheduler:
   name: None
-  warmup: 0
 
 checkpoint:
-  enabled: True
-  dir: "/mnt/qb/akata/aoq877/trained_models/trained_models"
-  frequency: 1
+  enabled: False
+  dir: None
+  frequency: 0
 
-search_id: None
-student_id: 1
-teacher_id: 2
-
-on_flip:
-  pos: 'distill'
-  neg: 'distill'
-  neut: 'distill'
+topn: 1
 
 # overwrite PL stuff
-max_epochs: 20
+max_epochs: 0
 devices: [0]
 sync_batchnorm: True
 accelerator: "gpu"
 strategy: "dp"
 precision: 16
-seed: 123
+seed: 0

@@ -3,9 +3,18 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/venv" />
+      <excludeFolder url="file://$MODULE_DIR$/docs" />
+      <excludeFolder url="file://$MODULE_DIR$/downstream" />
+      <excludeFolder url="file://$MODULE_DIR$/runs" />
+      <excludeFolder url="file://$MODULE_DIR$/solo" />
+      <excludeFolder url="file://$MODULE_DIR$/tests" />
+      <excludeFolder url="file://$MODULE_DIR$/zoo" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.7 (repsssl)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Remote Python 3.9.15 (sftp://aoq877@134.2.168.72:22/mnt/qb/work/akata/aoq877/miniconda3/envs/cd/bin/python)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+  <component name="PackageRequirementsSettings">
+    <option name="removeUnused" value="true" />
   </component>
   <component name="PyDocumentationSettings">
     <option name="format" value="GOOGLE" />
