@@ -30,6 +30,7 @@ loss:
   k: 100
   tau: 0.9999
   N: 2
+  label_smoothing: 0
 
 optimizer:
   name: "SGD"

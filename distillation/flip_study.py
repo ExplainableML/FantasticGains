@@ -138,7 +138,7 @@ def get_top_p_percent_classes(pos_class_flips, p):
     return k
 
 
-def get_topk_class_sim(pos_class_flips, k=None, p=None):
+def get_topk_class_sim(pos_class_flips, k=None, p=None, save_path=None):
     """Calculate the similarity between a) the top-k classes containing the most porisitve flips (if k is passed) or
     b) the classes containing the top-p% of positive flips (if p is passed)
 
@@ -172,14 +172,19 @@ def get_topk_class_sim(pos_class_flips, k=None, p=None):
         text_features = torch.nn.functional.normalize(model.encode_text(text_tokens), dim=-1)  # Top-k x Dim
     sims = text_features @ text_features.T
     tmp = sims.cpu().numpy()
+    if save_path is not None:
+        np.save(f"{save_path}", tmp)
     avg_sim = []
     max_sim = []
     share_of_flips = []
-    for top_k in k:
+    for c, top_k in enumerate(k):
         i, j = [], []
         for l in range(top_k):
             i += [l]*(top_k-l-1)
             j += range(l+1, top_k)
+        tmp = sims[:top_k, :top_k].cpu().numpy()
+        if save_path is not None:
+            np.save(f"{save_path}_top{p[c]}p", tmp)
         avg_sim.append(sims[i, j].mean().item())
         max_sim.append(sims[i, j].max().item())
         share_of_flips.append(np.sum(pos_class_flips[sorted_classes[:top_k]]) / np.sum(pos_class_flips) * 100)

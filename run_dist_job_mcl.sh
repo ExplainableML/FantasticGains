@@ -1,15 +1,15 @@
 #!/bin/bash
 #SBATCH --cpus-per-task=9
-#SBATCH --partition=gpu-2080ti-preemptable
+#SBATCH --partition=gpu-2080ti
 #SBATCH --gres=gpu:1
 #SBATCH --nodes=1
-#SBATCH --mem=96G
+#SBATCH --mem=48G
 #SBATCH --time=2-00:00
 #SBATCH -o /mnt/qb/work/akata/aoq877/repsssl/LOGS/mcl_dist-j-%j.out
-#SBATCH --array=2
+#SBATCH --array=0-8
 
-students=( 250 186 53 1  203 113 274 9  242 258 22 185 88 261 36 30  219 234 119 129 160 134 272 32 235 29  )
-teachers=( 24  88  17 12 143 2   33  82 77  70  12 139 95 43  39 161 19  89  30  242 157 232 76  9  214 176 )
+students=( 41  5   26  131 40  130 214 2   160 )
+teachers=( 239 239 239 239 239 239 239 239 239 )
 
 echo "${students[$SLURM_ARRAY_TASK_ID]}"
 echo "${teachers[$SLURM_ARRAY_TASK_ID]}"
@@ -32,14 +32,21 @@ python main_distillation.py \
             ++devices="[0, 1]" \
             ++seed=123 \
             ++data.dataset="imagenet_subset" \
+            ++data.num_classes=1000 \
+            ++loss.k=1000 \
             ++data.num_workers=9 \
             ++data.train_path="$train_datapath" \
             ++data.val_path="$val_datapath" \
+            ++data.data_path="/mnt/qb/akata/aoq877/" \
+            ++optimizer.batch_size='auto' \
             ++wandb.project='2_distill_between_experts' \
             ++student_id="${students[$SLURM_ARRAY_TASK_ID]}" \
             ++teacher_id="${teachers[$SLURM_ARRAY_TASK_ID]}" \
             ++search_id=None \
+            ++checkpoint.enabled=False \
             ++max_epochs=20 \
+            ++freeze=False \
+            ++teacher_pretrain='infograph' \
             ++mode='XEKL+MCL_Dist'
 
 

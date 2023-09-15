@@ -9,8 +9,9 @@
       <excludeFolder url="file://$MODULE_DIR$/solo" />
       <excludeFolder url="file://$MODULE_DIR$/tests" />
       <excludeFolder url="file://$MODULE_DIR$/zoo" />
+      <excludeFolder url="file://$MODULE_DIR$/venv2" />
     </content>
-    <orderEntry type="jdk" jdkName="Remote Python 3.9.15 (sftp://aoq877@134.2.168.72:22/mnt/qb/work/akata/aoq877/miniconda3/envs/cd/bin/python)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.7 (venv2)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PackageRequirementsSettings">

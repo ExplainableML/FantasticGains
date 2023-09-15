@@ -1,18 +1,20 @@
 import os
 import torch
 import logging
+import math
 
 import numpy as np
 from torchvision import transforms
 
 from sklearn.metrics import accuracy_score
 from omegaconf import DictConfig, OmegaConf
+from torch.optim.lr_scheduler import _LRScheduler
 
 from .models import init_timm_model
 from .flip_study import get_flips, get_dist_improvement
 
 
-def get_val_acc(model, loader, cfg, linear=None, theta_slow=None):
+def get_val_acc(model, loader, cfg, linear=None, theta_slow=None, norm=True):
     """Get validation accuracy of a model
 
     :param model: model to evaluate
@@ -34,7 +36,7 @@ def get_val_acc(model, loader, cfg, linear=None, theta_slow=None):
     for imgs, labels, idxs in loader:
         with torch.no_grad():
             with torch.cuda.amp.autocast():
-                out = model(norm_batch(imgs, cfg))
+                out = model(norm_batch(imgs, cfg) if norm else imgs)
                 if linear is not None:
                     out = linear(out)
             _, batch_preds = torch.max(out, 1)
@@ -45,7 +47,7 @@ def get_val_acc(model, loader, cfg, linear=None, theta_slow=None):
     return accuracy_score(true_y, preds) * 100
 
 
-def get_val_preds(model, loader, cfg, linear=None, theta_slow=None, return_logits=False, return_truey=False):
+def get_val_preds(model, loader, cfg, linear=None, theta_slow=None, return_logits=False, return_truey=False, norm=True):
     """Get validation predictions of a model
 
     :param model: model to evaluate
@@ -69,7 +71,7 @@ def get_val_preds(model, loader, cfg, linear=None, theta_slow=None, return_logit
     for imgs, labels, idxs in loader:
         with torch.no_grad():
             with torch.cuda.amp.autocast():
-                out = model(norm_batch(imgs, cfg))
+                out = model(norm_batch(imgs, cfg) if norm else imgs)
                 if linear is not None:
                     out = linear(out)
             if return_logits:
@@ -86,7 +88,7 @@ def get_val_preds(model, loader, cfg, linear=None, theta_slow=None, return_logit
         return preds
 
 
-def get_val_metrics(student, teacher, loader, cfg, zero_preds, linear_s=None, linear_t=None, theta_slow=None, zero_preds_step=None):
+def get_val_metrics(student, teacher, loader, cfg, zero_preds, linear_s=None, linear_t=None, theta_slow=None, zero_preds_step=None, norm=True):
     """Get validation metrics of a student and teacher model
 
     :param student: student model
@@ -115,8 +117,8 @@ def get_val_metrics(student, teacher, loader, cfg, zero_preds, linear_s=None, li
     for imgs, labels, idxs in loader:
         with torch.no_grad():
             with torch.cuda.amp.autocast():
-                out_s = student(norm_batch(imgs, cfg))
-                out_t = teacher(norm_batch(imgs, cfg))
+                out_s = student(norm_batch(imgs, cfg) if norm else imgs)
+                out_t = teacher(norm_batch(imgs, cfg) if norm else imgs)
                 if linear_s is not None:
                     out_s = linear_s(out_s)
                     out_t = linear_t(out_t)
@@ -268,6 +270,8 @@ def get_batch_size(teacher_name, student_name, device, loss_name, max_batch_size
                   'resmlp_24_224', 'resmlp_24_distilled_224', 'wide_resnet50_2', 'xcit_small_24_p16_224', 'vit_small_patch32_224']
     if 'cd' in loss_name or 'crd' in loss_name or student_name in crash_list:
         batch_size //= 2
+    #if student_name == teacher_name:
+    #    batch_size *= 2
     logging.info(f'Set batch size to {batch_size}')
     return batch_size
 
@@ -363,8 +367,8 @@ def get_teacher_student_id(cfg, experiment_id):
 
     :Returns: model config with teacher and student id
     """
-    students = [41, 5, 26, 302, 40, 130, 214, 2, 160]
-    teachers = [234, 302, 77]
+    students = [41, 5, 26, 33, 131, 132, 48, 214, 2, 77]
+    teachers = [268, 234, 302, 209, 10, 182, 310, 12, 239, 145]
 
     s_t = []
     for s in students:
@@ -429,3 +433,33 @@ def parse_cfg(cfg: DictConfig):
         cfg.loss.N = cfg.loss.N / scale_factor
 
     return cfg
+
+
+class CosineAnnealingLRWarmup(_LRScheduler):
+    def __init__(self, optimizer, total_iters, last_epoch=-1, warmup_iters=0, min_lr=0):
+        self.warmup_iters = warmup_iters
+        self.total_iters = total_iters
+        super().__init__(optimizer, last_epoch)
+        self.min_lr = min_lr
+
+    def get_lr(self):
+        if self.last_epoch < self.warmup_iters:
+            return [base_lr * self.last_epoch / (self.warmup_iters + 1e-8) for base_lr in self.base_lrs]
+        else:
+            return [self.min_lr + 0.5 * (base_lr - self.min_lr) * (1 + math.cos(
+                math.pi * (self.last_epoch - self.warmup_iters) / (self.total_iters - self.warmup_iters))) for base_lr
+                    in self.base_lrs]
+
+
+def load_pretrain_weights(model, path, strict=True, drop_linear=False):
+    checkpoint = torch.load(path)
+    if drop_linear:
+        checkpoint['model_state_dict'] = {k: v for k, v in checkpoint['model_state_dict'].items() if 'fc' not in k and 'classifier' not in k and 'head' not in k}
+    model.load_state_dict(checkpoint['model_state_dict'], strict=strict)
+    logging.info(f'Loaded pre-trained weights from {path}')
+    return model
+
+
+def label_smoothing(p, alpha=0.1):
+    u = torch.ones_like(p) / p.size(1)
+    return (1 - alpha) * p + alpha * u

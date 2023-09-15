@@ -94,6 +94,10 @@ def pos_dist_delta_2():
     plt.show()
 
 
+
+
+
+
 def teacher_influence_plot():
     """Barplot of the influence of the teacher's model properties on the distillation success.
 
@@ -252,7 +256,7 @@ def full_imagenet_table():
     :Returns: None
     """
     students = [41, 5, 26, 131, 40, 130, 214, 2, 160]
-    teachers = [234, 302, 77]
+    teachers = [234, 302, 77, 239]
     data = load_wandb_runs('2_distill_between_experts')
     data = data.loc[[data['teacher_id'][i] in teachers for i in data.index]]
     data = data.loc[[data['student_id'][i] in students for i in data.index]]
@@ -284,7 +288,9 @@ if __name__ == "__main__":
     #pos_dist_delta()
     #teacher_influence_plot()
 
-    transfer_rate_plot_a()
-    transfer_rate_plot_b()
+    #transfer_rate_plot_a()
+    #transfer_rate_plot_b()
 
-    #full_imagenet_table()
+    full_imagenet_table()
+
+    #dist_delta_line_plot()

@@ -1,11 +1,11 @@
 from typing import List
 
 
-from solo.ffcv_transforms.gaussian_blur import RandomGaussianBlur
-from solo.ffcv_transforms.color_distortion import RandomColorDistortion
-from solo.ffcv_transforms.color_jitter import RandomGrayscale
-from solo.ffcv_transforms.solarization import RandomSolarization
-from solo.ffcv_transforms.flip import RandomHorizontalFlip
+from ffcv_transforms.gaussian_blur import RandomGaussianBlur
+from ffcv_transforms.color_distortion import RandomColorDistortion
+from ffcv_transforms.color_jitter import RandomGrayscale
+from ffcv_transforms.solarization import RandomSolarization
+from ffcv_transforms.flip import RandomHorizontalFlip
 
 def provide(augmentation_list: List[str]):
     augmentations = []

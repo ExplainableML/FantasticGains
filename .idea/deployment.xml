@@ -2,31 +2,10 @@
 <project version="4">
   <component name="PublishConfigData" autoUpload="Always" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true" showDifferentInSync="false" showNewOnTargetInSync="false">
     <serverData>
-      <paths name="aoq877@134.2.168.72:22 key">
+      <paths name="SLURM">
         <serverdata>
           <mappings>
             <mapping deploy="/mnt/qb/work/akata/aoq877/repsssl" local="$PROJECT_DIR$" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="luth@129.13.133.30:22 password">
-        <serverdata>
-          <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="luth@129.13.186.217:22 (2)">
-        <serverdata>
-          <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="luth@129.13.186.231:22 password">
-        <serverdata>
-          <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

@@ -3,7 +3,7 @@ import timm
 import logging
 
 import torch.nn as nn
-from solo.utils.misc import make_contiguous
+#from solo.utils.misc import make_contiguous
 
 
 def freeze_all_but_linear(model):
@@ -15,7 +15,7 @@ def freeze_all_but_linear(model):
     """
     logging.info('Freeze non fc layers')
     for name, param in model.named_parameters():
-        if 'fc' not in name and 'classifier' not in name:
+        if 'fc' not in name and 'classifier' not in name and 'head' not in name:
             param.requires_grad = False
 
 
@@ -30,7 +30,7 @@ def unfreeze_all(model):
         param.requires_grad = True
 
 
-def init_timm_model(name, device, split_linear=False, pretrained=True, return_cfg=True):
+def init_timm_model(name, device, split_linear=False, pretrained=True, return_cfg=True, num_classes=1000):
     """Initialize a timm model
 
     :param name: name of the model
@@ -42,20 +42,20 @@ def init_timm_model(name, device, split_linear=False, pretrained=True, return_cf
     :Returns: model, model config (if return_cfg=True)
     """
     # initialize model
-    model = timm.create_model(name, pretrained=pretrained)
+    model = timm.create_model(name, pretrained=pretrained, num_classes=num_classes)
     # get default model config
     cfg_m = model.default_cfg
     if split_linear:
         # initialize feature extractor only
         feature_extractor = timm.create_model(name, pretrained=True, num_classes=0)
-        make_contiguous(feature_extractor)
+        #make_contiguous(feature_extractor)
         feature_extractor = nn.DataParallel(feature_extractor)
         feature_extractor.to(device, memory_format=torch.channels_last)
         feature_dims = get_feature_dims(feature_extractor, device)
         # initialize linear layer
         linear = nn.Sequential(nn.Linear(feature_dims, cfg_m['num_classes']))
         linear.load_state_dict(linear_state_dict(model))
-        make_contiguous(linear)
+        #make_contiguous(linear)
         linear = nn.DataParallel(linear)
         linear.to(device, memory_format=torch.channels_last)
         del model
@@ -64,7 +64,7 @@ def init_timm_model(name, device, split_linear=False, pretrained=True, return_cf
         else:
             return feature_extractor, linear, cfg_m
     else:
-        make_contiguous(model)
+        #make_contiguous(model)
         model = nn.DataParallel(model)
         if return_cfg:
             return model.to(device, memory_format=torch.channels_last), cfg_m

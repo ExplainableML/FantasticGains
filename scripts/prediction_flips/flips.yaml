@@ -25,7 +25,7 @@ ffcv_dtype: "float16"
 optimizer:
   name: None
   batch_size: 128
-  lr: None
+  lr: 0
   weight_decay: None
 
 loss:

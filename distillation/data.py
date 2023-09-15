@@ -2,7 +2,12 @@ import os
 import torch
 import ffcv
 import logging
-import ffcv_transforms
+#import ffcv_transforms
+from PIL import Image
+from torch.utils.data import Dataset, DataLoader
+from torchvision.datasets import ImageFolder
+from torchvision import transforms
+from torchvision.datasets import Caltech256, StanfordCars
 
 import numpy as np
 
@@ -236,3 +241,287 @@ def get_contrast_idx(index, target, cls_negative, k):
         neg_idx = np.random.choice(cls_negative[target[i]], k, replace=True)
         sample_idx.append(np.hstack((np.asarray([pos_idx]), neg_idx)))
     return np.array(sample_idx)
+
+
+class CUBDataset(Dataset):
+    def __init__(self, root_dir, transform=None, is_train=True):
+        self.root_dir = os.path.join(root_dir, 'CUB_200_2011')
+        self.transform = transform
+        self.is_train = is_train
+        self.image_paths, self.labels = self._load_image_paths_and_labels()
+
+    def _load_image_paths_and_labels(self):
+        image_paths = []
+        labels = []
+        train_set = []
+        with open(os.path.join(self.root_dir, 'images.txt'), 'r') as f:
+            for line in f:
+                img_id, img_path = line.strip().split()
+                image_paths.append(os.path.join(self.root_dir, 'images', img_path))
+        with open(os.path.join(self.root_dir, 'image_class_labels.txt'), 'r') as f:
+            for line in f:
+                img_id, label = line.strip().split()
+                labels.append(int(label) - 1)  # Labels in CUB dataset start from 1, we adjust them to start from 0.
+        with open(os.path.join(self.root_dir, 'train_test_split.txt'), 'r') as f:
+            for line in f:
+                img_id, train = line.strip().split()
+                train_set.append(int(train))
+        assert len(image_paths) == len(labels) == len(train_set), 'Dataset length mismatch!'
+        if self.is_train:
+            image_paths = [image_paths[i] for i in range(len(image_paths)) if train_set[i] == 1]
+            labels = [labels[i] for i in range(len(labels)) if train_set[i] == 1]
+        else:
+            image_paths = [image_paths[i] for i in range(len(image_paths)) if train_set[i] == 0]
+            labels = [labels[i] for i in range(len(labels)) if train_set[i] == 0]
+        logging.info(f'Loaded CUB. Number of images: {len(image_paths)}')
+        return image_paths, labels
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        img_path = self.image_paths[idx]
+        label = self.labels[idx]
+        image = Image.open(img_path).convert('RGB')
+
+        if self.transform is not None:
+            image = self.transform(image)
+
+        return image, label, idx
+
+
+def get_cub_loader(cfg, model_cfg, is_train=True):
+    """Get CUB dataset loader
+
+    :param cfg: Config
+    :param batch_size: Batch size
+    :param num_workers: Number of workers
+    :param is_train: Training or testing
+
+    :Returns: data_loader
+    """
+    transform = []
+    if is_train:
+        transform.extend([
+            transforms.RandomResizedCrop(model_cfg['input_size'][1]),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(15),
+            #transforms.RandAugment(num_ops=2, magnitude=10),
+            transforms.ToTensor(),
+            #transforms.RandomErasing(p=0.25),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+    else:
+        transform.extend([
+            transforms.Resize(model_cfg['input_size'][1]),
+            transforms.CenterCrop(model_cfg['input_size'][1]),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+    transform = transforms.Compose(transform)
+
+    dataset = CUBDataset(cfg.data.data_path, transform=transform, is_train=is_train)
+    data_loader = DataLoader(dataset, batch_size=cfg.optimizer.batch_size, shuffle=is_train, num_workers=cfg.data.num_workers)
+    return data_loader
+
+
+class CaltechDataset(Caltech256):
+    def __init__(self, root_dir, transform=None, is_train=True):
+        super(CaltechDataset, self).__init__(root_dir, transform=transform, download=True)
+        self.is_train = is_train
+        self.train_test_split()
+        logging.info(f'Loaded CUB. Number of images: {len(self.y)}')
+        logging.info(f'Number of classes: {len(np.unique(self.y))}')
+
+    def train_test_split(self, test_size=1/6):
+        # create a stratified split of the dataset
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, y_test = train_test_split(self.index, self.y,
+                                                            stratify=self.y,
+                                                            test_size=test_size, random_state=123)
+        if self.is_train:
+            self.index = X_train
+            self.y = y_train
+        else:
+            self.index = X_test
+            self.y = y_test
+
+    def __len__(self):
+        return len(self.index)
+
+    def __getitem__(self, idx):
+        if idx >= len(self):
+            logging.error(f'Index {idx} out of range!')
+
+        img = Image.open(
+            os.path.join(
+                self.root,
+                "256_ObjectCategories",
+                self.categories[self.y[idx]],
+                f"{self.y[idx] + 1:03d}_{self.index[idx]:04d}.jpg",
+            )
+        ).convert("RGB")
+
+        target = self.y[idx]
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return img, target, idx
+
+
+def get_caltech_loader(cfg, model_cfg, is_train=True):
+    """Get CUB dataset loader
+
+    :param cfg: Config
+    :param batch_size: Batch size
+    :param num_workers: Number of workers
+    :param is_train: Training or testing
+
+    :Returns: data_loader
+    """
+    transform = []
+    if is_train:
+        transform.extend([
+            transforms.RandomResizedCrop(model_cfg['input_size'][1]),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(15),
+            #transforms.RandAugment(num_ops=2, magnitude=10),
+            transforms.ToTensor(),
+            #transforms.RandomErasing(p=0.25),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+    else:
+        transform.extend([
+            transforms.Resize(model_cfg['input_size'][1]),
+            transforms.CenterCrop(model_cfg['input_size'][1]),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+    transform = transforms.Compose(transform)
+
+    dataset = CaltechDataset(cfg.data.data_path, transform=transform, is_train=is_train)
+    data_loader = DataLoader(dataset, batch_size=cfg.optimizer.batch_size, shuffle=is_train, num_workers=cfg.data.num_workers)
+    return data_loader
+
+
+class DomainNetInfographDataset(ImageFolder):
+    def __init__(self, root, transform=None, is_train=True):
+        root = os.path.join(root, 'domainset_infograph')
+        super(DomainNetInfographDataset, self).__init__(root, transform=transform)
+        self.root_dir = root
+        if is_train:
+            with open(os.path.join(root, 'infograph', 'infograph_train.txt'), 'r') as f:
+                for line in f:
+                    img_id, target = line.strip().split()
+                    self.samples.append((os.path.join(root, img_id), int(target)))
+        else:
+            with open(os.path.join(root,'infograph',  'infograph_test.txt'), 'r') as f:
+                for line in f:
+                    img_id, target = line.strip().split()
+                    self.samples.append((os.path.join(root, img_id), int(target)))
+
+        logging.info(f'Loaded DomainNet Infograph. Number of images: {len(self)}')
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        path, target = self.samples[index]
+        sample = self.loader(path)
+
+        if self.transform is not None:
+            sample = self.transform(sample)
+
+        return sample, target, index
+
+
+def get_domainnet_loader(cfg, model_cfg, is_train=True):
+    """Get CUB dataset loader
+
+    :param cfg: Config
+    :param batch_size: Batch size
+    :param num_workers: Number of workers
+    :param is_train: Training or testing
+
+    :Returns: data_loader
+    """
+    transform = []
+    if is_train:
+        transform.extend([
+            transforms.RandomResizedCrop(model_cfg['input_size'][1]),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(15),
+            #transforms.RandAugment(num_ops=2, magnitude=10),
+            transforms.ToTensor(),
+            #transforms.RandomErasing(p=0.25),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+    else:
+        transform.extend([
+            transforms.Resize(model_cfg['input_size'][1]),
+            transforms.CenterCrop(model_cfg['input_size'][1]),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+    transform = transforms.Compose(transform)
+
+    dataset = DomainNetInfographDataset(cfg.data.data_path, transform=transform, is_train=is_train)
+    data_loader = DataLoader(dataset, batch_size=cfg.optimizer.batch_size, shuffle=is_train, num_workers=cfg.data.num_workers)
+    return data_loader
+
+
+class CarsDataset(StanfordCars):
+    def __init__(self, root_dir, transform=None, is_train=True):
+        split = 'train' if is_train else 'test'
+        super(CarsDataset, self).__init__(root_dir, split=split, transform=transform, download=True)
+        logging.info(f'Loaded Stanford Cars. Number of images: {len(self.y)}')
+        logging.info(f'Number of classes: {len(np.unique(self.y))}')
+
+    def __len__(self):
+        return len(self.index)
+
+    def __getitem__(self, idx):
+        img, target = super(CarsDataset, self).__getitem__(idx)
+        return img, target, idx
+
+
+def get_cars_loader(cfg, model_cfg, is_train=True):
+    """Get CUB dataset loader
+
+    :param cfg: Config
+    :param batch_size: Batch size
+    :param num_workers: Number of workers
+    :param is_train: Training or testing
+
+    :Returns: data_loader
+    """
+    transform = []
+    if is_train:
+        transform.extend([
+            transforms.RandomResizedCrop(model_cfg['input_size'][1]),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(15),
+            #transforms.RandAugment(num_ops=2, magnitude=10),
+            transforms.ToTensor(),
+            #transforms.RandomErasing(p=0.25),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+    else:
+        transform.extend([
+            transforms.Resize(model_cfg['input_size'][1]),
+            transforms.CenterCrop(model_cfg['input_size'][1]),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+    transform = transforms.Compose(transform)
+
+    dataset = CarsDataset(cfg.data.data_path, transform=transform, is_train=is_train)
+    data_loader = DataLoader(dataset, batch_size=cfg.optimizer.batch_size, shuffle=is_train, num_workers=cfg.data.num_workers)
+    return data_loader

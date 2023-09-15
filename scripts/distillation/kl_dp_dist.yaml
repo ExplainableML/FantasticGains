@@ -24,7 +24,7 @@ ffcv_augmentation: 'default'
 ffcv_dtype: 'float16'
 
 loss:
-  name: 'xekl_mt'
+  name: 'xekl_dp'
   alpha: 1
   kd_T: 1
   k: 1000
@@ -32,6 +32,7 @@ loss:
   strat: 'most-conf'
   tau: None
   N: None
+  label_smoothing: 0
 
 optimizer:
   name: "SGD"

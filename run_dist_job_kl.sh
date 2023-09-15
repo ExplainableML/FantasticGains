@@ -6,10 +6,10 @@
 #SBATCH --mem=48G
 #SBATCH --time=3-00:00
 #SBATCH -o /mnt/qb/work/akata/aoq877/repsssl/LOGS/kl_dist-j-%j.out
-#SBATCH --array=1
+#SBATCH --array=0,3
 
-students=( 250 186 53 1  203 113 274 9  242 258 22 185 88 261 36 30  219 234 119 129 160 134 272 32 235 29  )
-teachers=( 24  88  17 12 143 2   33  82 77  70  12 139 95 43  39 161 19  89  30  242 157 232 76  9  214 176 )
+students=( 41  5   26  131 40  130 214 2   160 )
+teachers=( 239 239 239 239 239 239 239 239 239 )
 
 echo "${students[$SLURM_ARRAY_TASK_ID]}"
 echo "${teachers[$SLURM_ARRAY_TASK_ID]}"
@@ -17,10 +17,10 @@ echo "${teachers[$SLURM_ARRAY_TASK_ID]}"
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 export TORCH_HOME=/mnt/qb/work/akata/aoq877/torch_models/
 
-#train_datapath=/mnt/qb/akata/shared/ffcv_imagenet2012_subset100k/train_500_0.50_90.ffcv
-#val_datapath=/mnt/qb/akata/shared/ffcv_imagenet2012_subset100k/val_500_0.50_90.ffcv
-train_datapath=/mnt/qb/akata/shared/ffcv_imagenet2012/train_500_0.50_90.ffcv
-val_datapath=/mnt/qb/akata/shared/ffcv_imagenet2012/val_500_0.50_90.ffcv
+train_datapath=/mnt/qb/akata/shared/ffcv_imagenet2012_subset100k/train_500_0.50_90.ffcv
+val_datapath=/mnt/qb/akata/shared/ffcv_imagenet2012_subset100k/val_500_0.50_90.ffcv
+#train_datapath=/mnt/qb/akata/shared/ffcv_imagenet2012/train_500_0.50_90.ffcv
+#val_datapath=/mnt/qb/akata/shared/ffcv_imagenet2012/val_500_0.50_90.ffcv
 rsync -avhW --no-compress --progress $train_datapath $SCRATCH
 train_datapath=$SCRATCH/train_500_0.50_90.ffcv
 rsync -avhW --no-compress --progress $val_datapath $SCRATCH
@@ -31,14 +31,21 @@ python main_distillation.py \
         --config-path scripts/distillation \
         --config-name kl_dist.yaml \
             ++devices="[0,1]" \
-            ++data.dataset="imagenet" \
+            ++data.dataset="imagenet_subset" \
+            ++data.num_classes=1000 \
             ++data.num_workers=9 \
             ++data.train_path="$train_datapath" \
             ++data.val_path="$val_datapath" \
+            ++data.data_path="/mnt/qb/akata/aoq877/" \
+            ++loss.k=1000 \
+            ++optimizer.batch_size='auto' \
             ++wandb.project='2_distill_between_experts' \
             ++student_id="${students[$SLURM_ARRAY_TASK_ID]}" \
             ++teacher_id="${teachers[$SLURM_ARRAY_TASK_ID]}" \
+            ++checkpoint.enabled=True \
             ++search_id=None \
+            ++freeze=False \
+            ++teacher_pretrain='infograph' \
             ++mode='KL_Dist'
 
 

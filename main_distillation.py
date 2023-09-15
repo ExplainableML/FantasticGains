@@ -1,7 +1,8 @@
 import os
+import sys
 
 import hydra
-from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
+#from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 
 import wandb
 import time
@@ -17,14 +18,15 @@ import torch.backends.cudnn as cudnn
 
 #from solo.args.pretrain import parse_cfg
 from pytorch_lightning import seed_everything
-from distillation.data import get_ffcv_val_loader, get_ffcv_train_loader, get_cls_pos_neg, get_contrast_idx
+from distillation.data import get_ffcv_val_loader, get_ffcv_train_loader, get_cls_pos_neg, get_contrast_idx, get_cub_loader, get_caltech_loader, get_cars_loader
 from distillation.models import init_timm_model, get_feature_dims
 from distillation.dist_utils import get_val_acc, get_val_preds, get_val_metrics, get_metrics
-from distillation.dist_utils import get_batch_size, AverageMeter, get_flip_masks, norm_batch, parse_cfg
-from distillation.dist_utils import random_search, grid_search, get_model, get_teacher_student_id
+from distillation.dist_utils import get_batch_size, AverageMeter, get_flip_masks, norm_batch, parse_cfg, label_smoothing
+from distillation.dist_utils import get_model, get_teacher_student_id, load_pretrain_weights
 from distillation.contrastive.CRDloss import CRDLoss, DistillKL, DistillXE
 from distillation.contrastive.SimpleContrastloss import SimpleContrastLoss
 from distillation.trainer import BaseDisitllationTrainer
+from distillation.dist_utils import CosineAnnealingLRWarmup
 
 
 class DistillationTrainer(BaseDisitllationTrainer):
@@ -69,8 +71,8 @@ class DistillationTrainer(BaseDisitllationTrainer):
 
         if cfg.loss.name in ['crd', 'cd']:
             # initialize the teacher and student models
-            student, student_lin, self.cfg_s = init_timm_model(student_name, self.device, split_linear=True)
-            teacher, teacher_lin, self.cfg_t = init_timm_model(teacher_name, self.device, split_linear=True)
+            student, student_lin, self.cfg_s = init_timm_model(student_name, self.device, split_linear=True, num_classes=cfg.data.num_classes)
+            teacher, teacher_lin, self.cfg_t = init_timm_model(teacher_name, self.device, split_linear=True, num_classes=cfg.data.num_classes)
             s_dim = get_feature_dims(student, self.device)
             t_dim = get_feature_dims(teacher, self.device)
 
@@ -115,16 +117,17 @@ class DistillationTrainer(BaseDisitllationTrainer):
 
         else:
             # initialize the teacher and student models
-            self.student, self.cfg_s = init_timm_model(student_name, self.device)
+            self.student, self.cfg_s = init_timm_model(student_name, self.device, num_classes=cfg.data.num_classes)
             if self.multi_teacher:  # if multi-teacher distillation
                 self.teachers = nn.ModuleList([])
                 self.cfg_t = []
                 for teacher in teacher_name:
-                    teacher, cfg_t = init_timm_model(teacher, self.device)
+                    teacher, cfg_t = init_timm_model(teacher, self.device, num_classes=cfg.data.num_classes)
                     self.teachers.append(teacher)
                     self.cfg_t.append(cfg_t)
             else:  # if single teacher distillation
-                self.teacher, self.cfg_t = init_timm_model(teacher_name, self.device)
+                self.teacher, self.cfg_t = init_timm_model(teacher_name, self.device, num_classes=cfg.data.num_classes)
+
 
             self.module_list = None
             self.criterion_list = None
@@ -133,12 +136,27 @@ class DistillationTrainer(BaseDisitllationTrainer):
 
             # initialize the student-teacher model for multi-teacher distillation
             self.student_teacher, self.cfg_st = init_timm_model(student_name,
-                                                                self.device) if 'dp' in cfg.loss.name else (None, None)
+                                                                self.device, num_classes=cfg.data.num_classes) #if 'mt' in cfg.loss.name else (None, None)
 
+            if 'imagenet' not in cfg.data.dataset:
+                self.student = load_pretrain_weights(self.student, f'{os.path.join(cfg.checkpoint.dir, cfg.data.dataset, student_name + "_lin_ft" if cfg.freeze else student_name)}/{student_name}.pt')
+                if self.student_teacher is not None:
+                    self.student_teacher = load_pretrain_weights(self.student_teacher, f'{os.path.join(cfg.checkpoint.dir, cfg.data.dataset, student_name+ "_lin_ft" if cfg.freeze else student_name)}/{student_name}.pt')
+                if self.multi_teacher:
+                    for i, teacher in enumerate(self.teachers):
+                        self.teachers[i] = load_pretrain_weights(teacher, f'{os.path.join(cfg.checkpoint.dir, cfg.data.dataset, teacher_name[i]+ "_lin_ft" if cfg.freeze else teacher_name[i])}/{teacher_name[i]}.pt')
+                else:
+                    self.teacher = load_pretrain_weights(self.teacher, f'{os.path.join(cfg.checkpoint.dir, cfg.data.dataset, teacher_name+ "_lin_ft" if cfg.freeze else teacher_name)}/{teacher_name}.pt')
+            if cfg.teacher_pretrain == 'infograph':
+                self.teacher = load_pretrain_weights(self.teacher, f'{os.path.join(cfg.checkpoint.dir, cfg.teacher_pretrain)}/{teacher_name}.pt', strict=False, drop_linear=True)
+                logging.info(f'Loaded teacher model from {os.path.join(cfg.checkpoint.dir, cfg.teacher_pretrain)}/{teacher_name}.pt')
         # initialize the learning rate scheduler
         if cfg.scheduler.name == 'warmup_cosine':
-            self.scheduler = LinearWarmupCosineAnnealingLR(self.opt, warmup_epochs=cfg.scheduler.warmup,
-                                                           max_epochs=cfg.max_epochs)
+            self.iter_per_epoch = len(self.train_loader)
+
+            self.scheduler = CosineAnnealingLRWarmup(self.opt, cfg.max_epochs * self.iter_per_epoch,
+                                                     warmup_iters=(cfg.scheduler.warmup / 100) * cfg.max_epochs * self.iter_per_epoch,
+                                                     min_lr=cfg.scheduler.eta_min)
         else:
             self.scheduler = None
 
@@ -146,8 +164,20 @@ class DistillationTrainer(BaseDisitllationTrainer):
         self.theta_slow = self.student.state_dict() if 'mcl' in cfg.loss.name else None
 
         # initialize the validation and train dataloaders
-        self.val_loader = get_ffcv_val_loader(self.cfg_s, self.device, cfg, batch_size=cfg.optimizer.batch_size)
-        self.train_loader = get_ffcv_train_loader(self.cfg_s, self.device, cfg)
+        if 'imagenet' in cfg.data.dataset:
+            self.val_loader = get_ffcv_val_loader(self.cfg_s, self.device, cfg, batch_size=cfg.optimizer.batch_size)
+            self.train_loader = get_ffcv_train_loader(self.cfg_s, self.device, cfg)
+        elif cfg.data.dataset == 'CUB':
+            self.val_loader = get_cub_loader(self.cfg, self.cfg_s, is_train=False)
+            self.train_loader = get_cub_loader(self.cfg, self.cfg_s, is_train=True)
+        elif cfg.data.dataset == 'caltech':
+            self.val_loader = get_caltech_loader(self.cfg, self.cfg_s, is_train=False)
+            self.train_loader = get_caltech_loader(self.cfg, self.cfg_s, is_train=True)
+        elif cfg.data.dataset == 'cars':
+            self.val_loader = get_cars_loader(self.cfg, self.cfg_s, is_train=False)
+            self.train_loader = get_cars_loader(self.cfg, self.cfg_s, is_train=True)
+        else:
+            raise NotImplementedError
 
         if cfg.loss.name in ['crd', 'cd']:
             # get the class positive and negative indices for CRD
@@ -162,14 +192,14 @@ class DistillationTrainer(BaseDisitllationTrainer):
                                             linear=self.module_list[1])
         else:
             # get the student model validation predictions
-            self.zero_preds = get_val_preds(self.student, self.val_loader, self.cfg_s)
+            self.zero_preds = get_val_preds(self.student, self.val_loader, self.cfg_s, norm='imagenet' in cfg.data.dataset)
             # get the teacher and student validation accuracy
-            self.student_acc = [get_val_acc(self.student, self.val_loader, self.cfg_s)]
+            self.student_acc = [get_val_acc(self.student, self.val_loader, self.cfg_s, norm='imagenet' in cfg.data.dataset)]
             if self.multi_teacher:
-                self.teacher_acc = [[get_val_acc(teacher, self.val_loader, cfg_t)] for teacher, cfg_t in
+                self.teacher_acc = [[get_val_acc(teacher, self.val_loader, cfg_t, norm='imagenet' in cfg.data.dataset)] for teacher, cfg_t in
                                     zip(self.teachers, self.cfg_t)]
             else:
-                self.teacher_acc = [get_val_acc(self.teacher, self.val_loader, self.cfg_t)]
+                self.teacher_acc = [get_val_acc(self.teacher, self.val_loader, self.cfg_t, norm='imagenet' in cfg.data.dataset)]
         self.knowledge_gain = [0]
         self.knowledge_loss = [0]
 
@@ -215,11 +245,12 @@ class DistillationTrainer(BaseDisitllationTrainer):
         for j, (imgs, labels, idxs) in enumerate(self.train_loader):
             # zero the parameter gradients
             self.opt.zero_grad()
+            labels = labels.to(self.device)
 
             # pass batch images through the models
             with torch.cuda.amp.autocast():
                 # get the student model output
-                out_s = self.student(norm_batch(imgs, self.cfg_s))
+                out_s = self.student(norm_batch(imgs, self.cfg_s) if 'imagenet' in self.cfg.data.dataset else imgs)
                 sp_s = nn.functional.softmax(out_s, dim=1)
                 _, s_preds = torch.max(sp_s, 1)
                 with torch.no_grad():
@@ -227,21 +258,23 @@ class DistillationTrainer(BaseDisitllationTrainer):
                     if self.multi_teacher:
                         out_t, sp_t, t_preds = [], [], []
                         for t, teacher in enumerate(self.teachers):
-                            o = teacher(norm_batch(imgs, self.cfg_t[t]))
+                            o = teacher(norm_batch(imgs, self.cfg_t[t]) if 'imagenet' in self.cfg.data.dataset else imgs)
                             sp = nn.functional.softmax(o, dim=1)
                             _, pred = torch.max(sp, 1)
                             out_t.append(o)
                             sp_t.append(sp)
                             t_preds.append(pred)
                     else:
-                        out_t = self.teacher(norm_batch(imgs, self.cfg_t))
+                        out_t = self.teacher(norm_batch(imgs, self.cfg_t) if 'imagenet' in self.cfg.data.dataset else imgs)
                         sp_t = nn.functional.softmax(out_t, dim=1)
                         _, t_preds = torch.max(sp_t, 1)
                     # get the student teacher model output
                     if self.student_teacher is not None:
-                        out_st = self.student_teacher(norm_batch(imgs, self.cfg_st))
+                        out_st = self.student_teacher(norm_batch(imgs, self.cfg_st) if 'imagenet' in self.cfg.data.dataset else imgs)
                         sp_st = nn.functional.softmax(out_st, dim=1)
                         _, st_preds = torch.max(sp_st, 1)
+                    else:
+                        st_preds = None
 
             if self.multi_teacher:  # generate the teacher masks for each teacher in multi-teacher mode
                 if 'dp' not in self.cfg.loss.name or 'most-conf' not in self.cfg.loss.strat or self.cfg.loss.k != 1000:
@@ -329,6 +362,9 @@ class DistillationTrainer(BaseDisitllationTrainer):
                         kl_loss = kl_loss_fn(topk_out_s[pos_mask], topk_out_t[pos_mask])
                     if torch.isnan(kl_loss):
                         kl_loss = torch.zeros(1, device=self.device)
+
+            if self.cfg.loss.label_smoothing > 0:
+                sp_s = label_smoothing(sp_s, self.cfg.loss.label_smoothing)  # apply label smoothing
 
             xe_loss = xe_loss_fn(sp_s, labels)  # get the cross entropy loss
             # get the final loss
@@ -474,15 +510,15 @@ class DistillationTrainer(BaseDisitllationTrainer):
         if self.cfg.loss.name in ['crd', 'cd'] or ('dp' in self.cfg.loss.name and 'adaptive' in self.cfg.loss.strat):
             s_metrics = get_val_metrics(self.module_list[0], self.module_list[-2], self.val_loader, self.cfg_s,
                                         self.zero_preds,
-                                        linear_s=self.module_list[1], linear_t=self.module_list[-1])
+                                        linear_s=self.module_list[1], linear_t=self.module_list[-1], norm='imagenet' in self.cfg.data.dataset)
         else:
             if self.multi_teacher:
                 s_metrics = get_val_metrics(self.student, self.teachers[0], self.val_loader, self.cfg_s,
                                             self.zero_preds,
-                                            theta_slow=self.theta_slow)
+                                            theta_slow=self.theta_slow, norm='imagenet' in self.cfg.data.dataset)
             else:
                 s_metrics = get_val_metrics(self.student, self.teacher, self.val_loader, self.cfg_s, self.zero_preds,
-                                            theta_slow=self.theta_slow)
+                                            theta_slow=self.theta_slow, norm='imagenet' in self.cfg.data.dataset)
         logging.info(f'Metrics: {s_metrics}')
         t_acc = self.teacher_acc[-1]
         # update accuracies
@@ -568,8 +604,9 @@ def main(cfg: DictConfig):
 
     # initialize the distillation trainer
     trainer = DistillationTrainer(cfg, teacher_name, student_name)
-    # check the accuracies of the teacher and student models
-    trainer.check_accuracies(models_list, (cfg.teacher_id, cfg.student_id))
+    #if 'imagenet' in cfg.data.dataset:
+        # check the accuracies of the teacher and student models
+        #trainer.check_accuracies(models_list, (cfg.teacher_id, cfg.student_id))
 
     st_cfg = {'teacher_name': teacher_name, 'student_name': student_name,
               'ts_diff': trainer.teacher_acc[0] - trainer.student_acc[0],

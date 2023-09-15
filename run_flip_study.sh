@@ -6,7 +6,7 @@
 #SBATCH --mem=48G
 #SBATCH --time=2-00:00
 #SBATCH -o /mnt/qb/work/akata/aoq877/repsssl/LOGS/flips-j-%j.out
-#SBATCH --array=0-200
+#SBATCH --array=425,90,380,36,341,130
 
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 export TORCH_HOME=/mnt/qb/work/akata/aoq877/torch_models/
@@ -30,4 +30,4 @@ python main_flips.py \
                       ++data.val_path=$val_datapath \
                       ++optimizer.batch_size='auto' \
                       ++ffcv_dtype="float16" \
-                      ++mode='Random Baseline'
+                      ++mode='Sims Test'

@@ -117,7 +117,7 @@ def main(cfg: DictConfig):
 
         # get similarity of topk classes
         p_values = [2, 5, 20, 50]  # p values for topk classes
-        k, avg_sim, max_sim, share = get_topk_class_sim(pos_flips, k=p_values)
+        k, avg_sim, max_sim, share = get_topk_class_sim(pos_flips, p=p_values, save_path=f'files/sim_{teacher_name}_{student_name}')
         logging.info(f'Sim: {avg_sim}, Share: {share}')
         for i, p in enumerate(p_values):
             class_flips[f'top{p}%_avg_sim'] = avg_sim[i]

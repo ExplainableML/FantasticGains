@@ -316,7 +316,7 @@ def main(cfg: DictConfig):
         wandb.init(id=wandb_id, resume="allow", project=cfg.wandb.project, config=config, tags=tags)
         wandb.run.name = f'{student_name}'
         logging.info(f'Loaded from checkpoint: {trainer.checkpoint_path}')
-    except AssertionError:
+    except FileNotFoundError:
         # create checkpoint folder
         os.makedirs(trainer.checkpoint_path, exist_ok=True)
         # initialize wandb logger

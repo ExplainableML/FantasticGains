@@ -7,5 +7,6 @@ venv
 files
 plots/images
 plots/prediction_flips
+plots/data
 data/
 archive/

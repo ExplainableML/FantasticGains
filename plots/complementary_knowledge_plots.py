@@ -134,13 +134,13 @@ def prediction_flips_sim_plot():
     plt.xlabel('Classes with Top-X% of the Compl. Knowledge', fontsize=labels_size)
     plt.ylabel('Difference to Avg. Sim. [%]', fontsize=labels_size)
     #plt.title('Similarity of the Classes Containing \n the Most Positive Prediction Flips', fontsize=labels_size+2)
-    plt.ylim((0.04, 0.16))
+    plt.ylim((0.04, 0.20))
     #plt.minorticks_on()
     #plt.xscale('log')
     plt.minorticks_off()
     plt.grid(alpha=0.3)
     #plt.xticks(top_p, ['Top-2%', 'Top-5%', 'Top-20%', 'Top-50%'])
-    plt.yticks([0.06, 0.08, 0.10, 0.12, 0.14])
+    plt.yticks([0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18], ['+6%', '+8%', '+10%', '+12%', '+14%', '+16%', '+18%'])
     #plt.legend()
 
     fig.tight_layout()
@@ -183,11 +183,15 @@ def class_pred_flips_histogramms():
     plt.show()
 
 
+
+
+
 if __name__ == "__main__":
     #prediction_flips_plot()
-    prediction_flips_entropy_plot()
+    #prediction_flips_entropy_plot()
     prediction_flips_sim_plot()
     #class_pred_flips_histogramms()
+    #sim_heatmap()
 
 
 
