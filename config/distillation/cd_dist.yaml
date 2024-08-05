@@ -1,0 +1,14 @@
+defaults:
+  - _self_
+  - distillation@_global_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+name: "cd-distillation-imagenet"
+
+loss:
+  name: 'cd'
+  alpha: 0
+  beta: 10
+  gamma: 0.1
+  kd_T: 1

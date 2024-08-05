@@ -14,6 +14,90 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 
 
+def dist_delta_line_plot_ensemble(dataset='imagenet'):
+    plt.rc('font', family='Times New Roman', size=19)
+
+    ensemble = pd.read_csv(f'data/distillation_results_raw_ensemble.csv')
+    imagenet = pd.read_csv(f'data/distillation_results_raw_imagenet.csv')
+    imagenet = imagenet.loc[imagenet['tag'] == 'KL+MT_Dist']
+
+    ensemble = ensemble.dropna(subset=['dist_delta'])
+    imagenet = imagenet.dropna(subset=['dist_delta'])
+
+    appr_strings = {'KL+MT_Dist': 'KL-Dist. + DP Transfer',
+                    'ensemble': 'Ensemble',
+                    }
+
+    dist_deltas = {appr: [] for appr in appr_strings.keys()}
+    markers = ['o', 's', 'D', '^']
+    nbins = 8
+    pp = 0.75
+
+    students = imagenet['student_id'].unique()
+    success_rate = {appr: [] for appr in appr_strings.keys()}
+
+    for appr in appr_strings.keys():
+        data = ensemble if appr == 'ensemble' else imagenet
+        data['delta_acc_bin'] = pd.cut(data['ts_diff'], bins=nbins)
+        data_appr = data.sort_values(by=['delta_acc_bin'])
+        #data_appr = data.loc[data['tag'] == appr]
+        for student in students:
+            tmp = data_appr.loc[data_appr['student_id'] == student]
+            if len(tmp) == 0:
+                success_rate[appr].append(0)
+            else:
+                success_rate[appr].append(np.mean(tmp['dist_delta'].values > 0))
+        for bin in data['delta_acc_bin'].unique():
+            tmp = data_appr.loc[data_appr['delta_acc_bin'] == bin]
+            if len(tmp) == 0:
+                dist_deltas[appr].append(0)
+            else:
+                quantile = np.quantile(tmp['dist_delta'].values, pp)
+                dds = tmp.loc[tmp['dist_delta'] >= quantile]['dist_delta'].values
+                dist_deltas[appr].append(np.mean(dds))
+                #dist_deltas[appr].append(np.median(tmp['dist_delta'].values))
+
+    # get the max and min dist delta for all approaches
+    max_dist_delta = np.max([dist_deltas[appr] for appr in dist_deltas.keys()])
+    min_dist_delta = np.min([dist_deltas[appr] for appr in dist_deltas.keys()])
+    bin_centers = [bin.mid for bin in data['delta_acc_bin'].unique()]
+    bin_centers = np.sort(bin_centers)
+
+    print('Success Rate')
+    for appr in appr_strings.keys():
+        print(f'{appr}: {np.median(success_rate[appr])}')
+
+    fig, axes = plt.subplots(1)
+    tag_order = ['KL+MT_Dist', 'Ensemble']
+    colors = ['darkorange', 'darkblue']
+    alphas = [0.6, 1]
+    markers = ['o', 's']
+    axes.hlines(0, -100, 100, colors='gray', linestyle='--')
+    axes.vlines(0, -100, 100, colors='gray', linestyle='--')
+    for i, tag in enumerate(appr_strings.keys()):
+        axes.plot(bin_centers, dist_deltas[tag], markers[i], color=colors[i], label=appr_strings[tag], alpha=alphas[i], linewidth=4, markersize=10)
+        # axes[1].plot(xb[tag], ddsucc[tag], '-o', label=tag)
+        # ax.errorbar(xb[tag], ddb[tag], yerr=dds[tag], label=tag)
+    axes.set_xlim(np.min(bin_centers) - 0.5, np.max(bin_centers) + 0.5)
+    axes.set_ylim(min_dist_delta - 0.5, max_dist_delta + 0.5)
+    # ax.set_yscale('log')
+    axes.tick_params(axis='both', which='major', labelsize=22)
+    axes.tick_params(axis='both', which='minor', labelsize=22)
+    #axes.set_title('Knowledge Transfer on CUB', fontsize=22)
+    axes.set_xlabel('Performance Difference of Teacher and Student', fontsize=22)
+    axes.set_ylabel('Knowledge Transfer Delta', fontsize=22)
+    from matplotlib.lines import Line2D
+    custom_lines = [Line2D([0], [0], color='darkorange', lw=4),
+                    Line2D([0], [0], color='darkblue', lw=4)]
+    axes.legend(custom_lines, ['KL-Dist. + DP Transfer', 'Ensemble'],
+                fontsize=18, handlelength=0.5)
+    fig.set_size_inches(8, 5)
+    fig.tight_layout()
+    #fig.savefig(f'images/transfer_delta_{dataset}_{pp}.png', dpi=300)
+    plt.savefig(f'images/transfer_delta_ensemble_{pp}.pdf', bbox_inches='tight')
+    plt.show()
+
+
 def dist_delta_line_plot_v3(dataset='infograph'):
     plt.rc('font', family='Times New Roman', size=19)
 
@@ -241,7 +325,7 @@ def dist_delta_line_plot_v2():
 
 def dist_delta_line_plot():
     plt.rc('font', family='Times New Roman', size=19)
-    data = load_wandb_runs('2_distill_between_experts')
+    data = load_wandb_runs('b_ensemble-baseline')
     #data = data.dropna(subset=['dist_delta', 'ts_diff'])
     all_students = {'transformer': [41, 5, 26], # [41, 7, 5, 46, 26, 171],
                     'cnn': [131, 130, 40], # [33, 131, 235, 132, 42, 48, 130],
@@ -250,11 +334,11 @@ def dist_delta_line_plot():
     data = data.loc[[data['student_id'][i] in all_students[data['student_type'][i]] for i in data.index]]
     data = data.loc[[data['teacher_id'][i] in all_teachers for i in data.index]]
     #data = data.loc[data['dist_delta'] > -20]
-    data = data.loc[[data['data'][i]['dataset'] == 'cars' for i in data.index]]
-    data = data.loc[data['freeze'] == True]
-    #data = data.loc[data['teacher_pretrain'] == 'CUB']
+    #data = data.loc[[data['data'][i]['dataset'] == 'imagenet' for i in data.index]]
+    #data = data.loc[data['freeze'] == True]
+    #data = data.loc[data['teacher_pretrain'] != 'infograph']
     dist_deltas = {}
-    data.to_csv('distillation_results_raw_cars.csv')
+    data.to_csv('distillation_results_raw_ensemble.csv')
     appr_strings = {'KL_Dist': 'KL Distillation Transfer', #'XEKL_Dist': 'XE-KL Distillation',
                     'XEKL+MCL_Dist': 'XE-KL Dist. + MCL Transfer', 'KL+MT_Dist': 'KL Dist. + DP Transfer'}
     markers = ['o', 's', 'D', '^']
@@ -493,7 +577,8 @@ def transfer_delta_table():
 if __name__ == "__main__":
     #dist_delta_line_plot()
     #dist_delta_line_plot_v2()
-    dist_delta_line_plot_v3('imagenet_subset')
+    #dist_delta_line_plot_v3('imagenet_subset')
+    dist_delta_line_plot_ensemble()
     #unsup_v_sup()
     #cont_distillation_gain_loss()
     #cont_distillation_gain_loss_v2()

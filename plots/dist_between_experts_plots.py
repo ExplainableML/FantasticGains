@@ -57,12 +57,12 @@ def pos_dist_delta_2():
     :Returns: None
     """
     plt.rc('font', family='Times New Roman', size=18)
-    data = pd.read_csv('students_leaderboard.csv', index_col=[0])
+    data = pd.read_csv('data/students_leaderboard.csv', index_col=[0])
     data = data.loc[data['mean_dist_delta'] > -10]
     data = data.loc[[data['student_id'][i] not in [144, 261, 63, 139, 237, 302, 40, 299, 232, 285] for i in data.index]]
 
     appr_dict = {'KL Dist.': 'C0', 'XE-KL Dist.': 'C0', 'XE-KL+MCL Dist.': 'C2', 'KL+DP Dist.': 'C2'}
-    appr_strings = {'KL_Dist': 'KL Distillation', 'XEKL_Dist': 'XE-KL Distillation', 'XEKL+MCL_Dist': 'XE-KL+MCL Distillation', 'KL+MT_Dist': 'KL+DP Distillation'}
+    appr_strings = {'KL_Dist': 'KL-Dist. Transfer', 'XEKL_Dist': 'XE-KL-Dist. Transfer', 'XEKL+MCL_Dist': 'XE-KL-Dist + MCL Transfer', 'KL+MT_Dist': 'KL-Dist + DP Transfer'}
     wrapped_labels = ['\n'.join(textwrap.wrap(label, 12)) for label in appr_strings.values()]
 
     fig = plt.figure(figsize=(8, 5))
@@ -285,12 +285,12 @@ def full_imagenet_table():
 
 
 if __name__ == "__main__":
-    #pos_dist_delta()
+    pos_dist_delta_2()
     #teacher_influence_plot()
 
     #transfer_rate_plot_a()
     #transfer_rate_plot_b()
 
-    full_imagenet_table()
+    #full_imagenet_table()
 
     #dist_delta_line_plot()

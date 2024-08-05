@@ -27,8 +27,8 @@ val_datapath=$SCRATCH/val_500_0.50_90.ffcv
 ls $SCRATCH
 
 python main_distillation.py \
-        --config-path scripts/distillation \
-        --config-name crd_dist.yaml \
+        --config-path config \
+        --config-name distillation/crd_dist.yaml \
             ++devices="[0]" \
             ++data.dataset="imagenet_subset" \
             ++data.num_workers=9 \

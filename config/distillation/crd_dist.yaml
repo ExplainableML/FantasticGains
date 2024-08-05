@@ -1,0 +1,18 @@
+defaults:
+  - _self_
+  - distillation@_global_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+name: "crd-distillation-imagenet"
+
+loss:
+  name: 'crd'
+  alpha: 0
+  beta: 0.8
+  gamma: 1
+  feat_dim: 128
+  nce_k: 4096
+  nce_t: 0.07
+  nce_m: 0.5
+  kd_T: 4

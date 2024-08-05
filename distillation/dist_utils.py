@@ -22,6 +22,7 @@ def get_val_acc(model, loader, cfg, linear=None, theta_slow=None, norm=True):
     :param cfg: config
     :param linear: linear layer to apply to model output
     :param theta_slow: slow weights to load into model
+    :param norm: Normalize batch inputs
 
     :Returns: validation accuracy
     """
@@ -57,6 +58,7 @@ def get_val_preds(model, loader, cfg, linear=None, theta_slow=None, return_logit
     :param theta_slow: slow weights to load into model
     :param return_logits: whether to return logits
     :param return_truey: whether to return true labels
+    :param norm: Norm batch inputs
 
     :Returns: validation predictions
     """
@@ -100,6 +102,7 @@ def get_val_metrics(student, teacher, loader, cfg, zero_preds, linear_s=None, li
     :param linear_t: linear layer to apply to teacher model output
     :param theta_slow: slow weights to load into student model
     :param zero_preds_step: zero predictions of the student model of the previous step (for sequential distillation)
+    :param norm: Norm batch inputs
 
     :Returns: validation metrics
     """
@@ -270,8 +273,6 @@ def get_batch_size(teacher_name, student_name, device, loss_name, max_batch_size
                   'resmlp_24_224', 'resmlp_24_distilled_224', 'wide_resnet50_2', 'xcit_small_24_p16_224', 'vit_small_patch32_224']
     if 'cd' in loss_name or 'crd' in loss_name or student_name in crash_list:
         batch_size //= 2
-    #if student_name == teacher_name:
-    #    batch_size *= 2
     logging.info(f'Set batch size to {batch_size}')
     return batch_size
 

@@ -18,13 +18,18 @@ from distillation.models import init_timm_model, freeze_all_but_linear
 from distillation.dist_utils import get_batch_size, AverageMeter, norm_batch, parse_cfg
 from distillation.dist_utils import get_model, get_teacher_student_id, CosineAnnealingLRWarmup
 
+
 class SupervisedTrainer:
     def __init__(self, cfg, model_name):
         seed_everything(cfg.seed)
         self.cfg = cfg
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+        # initialize model
         self.model_name = model_name
         self.net, self.cfg_m = init_timm_model(model_name, self.device, pretrained='Finetune' in cfg.mode, num_classes=cfg.data.num_classes)
+
+        # freeze encoder layers
         if cfg.freeze:
             freeze_all_but_linear(self.net)
             # check if model backbone is frozen
@@ -33,11 +38,9 @@ class SupervisedTrainer:
                     assert not param.requires_grad
         logging.info(f'Memory usage: {torch.cuda.memory_allocated(self.device) / (1024 ** 2)}')
         logging.info(f'Model: {model_name}, config: {self.cfg_m}')
-        #logging.info(summary(self.net, (3, cfg.data.img_size, cfg.data.img_size)) if cfg.model.name != 'byteformer'
-        #            else summary(self.net, (3* cfg.data.img_size**2 + 140, 1)))
 
+        # initialize the validation and train dataloaders
         if cfg.data.dataset == 'ImageNet':
-            # initialize the validation and train dataloaders
             self.val_loader = get_ffcv_val_loader(self.cfg_m, self.device, cfg, batch_size=cfg.optimizer.batch_size)
             self.train_loader = get_ffcv_train_loader(self.cfg_m, self.device, cfg)
         elif cfg.data.dataset == 'CUB':
@@ -55,18 +58,21 @@ class SupervisedTrainer:
         else:
             raise NotImplementedError(f'{cfg.data.dataset} is not implemented yet.')
 
+        # initialize loss function
         self.loss_function = nn.CrossEntropyLoss()
 
+        # initialize optimizer and lr scheduler
         scale_lr = cfg.optimizer.lr * cfg.optimizer.batch_size / 256
         if cfg.optimizer.name == 'adamw':
-            self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=scale_lr, weight_decay=cfg.optimizer.weight_decay)
+            self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=scale_lr,
+                                               weight_decay=cfg.optimizer.weight_decay)
         else:
-            self.optimizer = torch.optim.SGD(self.net.parameters(), lr=scale_lr, momentum=cfg.optimizer.momentum, weight_decay=cfg.optimizer.weight_decay)
-
+            self.optimizer = torch.optim.SGD(self.net.parameters(), lr=scale_lr, momentum=cfg.optimizer.momentum,
+                                             weight_decay=cfg.optimizer.weight_decay)
         self.iter_per_epoch = len(self.train_loader)
         if cfg.scheduler.name == 'CosineAnnealingWarmRestarts':
             self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=cfg.scheduler.warmup,
-                                                                            T_mult=1, eta_min=cfg.scheduler.eta_min)
+                                                                                  T_mult=1, eta_min=cfg.scheduler.eta_min)
         elif cfg.scheduler.name == 'CosineAnnealingLRwWarmup':
             scale_min_lr = cfg.scheduler.eta_min * cfg.optimizer.batch_size / 256
             self.scheduler = CosineAnnealingLRWarmup(self.optimizer, cfg.max_epochs * self.iter_per_epoch,
@@ -75,6 +81,7 @@ class SupervisedTrainer:
         else:
             self.scheduler = None
 
+        # initialize grad scales for half precision
         if cfg.data.precision == 'half':
             self.scaler = torch.cuda.amp.GradScaler()
         else:
@@ -134,6 +141,13 @@ class SupervisedTrainer:
                    self.checkpoint_path + f'/{self.model_name}.pt')
 
     def train_one_epoch(self, epoch):
+        """Train one epoch
+
+        :param epoch: Index of current epoch
+
+        Returns: dict {train_loss, train_acc}
+
+        """
         start = time.time()
         self.net.train()
 
@@ -142,7 +156,6 @@ class SupervisedTrainer:
 
         for batch_index, batch_inputs in enumerate(self.train_loader):
             images, labels, idxs = batch_inputs
-            #images = norm_batch(images, self.cfg_m)
             batch_time = time.time()
 
             labels = labels.cuda()
@@ -172,8 +185,6 @@ class SupervisedTrainer:
                 loss.backward()
                 self.optimizer.step()
 
-            # logging.info(f'Memory usage: {torch.cuda.memory_allocated(torch.device("cuda")) / (1024 ** 2)}')
-
             _, preds = outputs.max(1)
             correct = preds.eq(labels).sum()
             self.n_iter += len(labels)
@@ -194,18 +205,22 @@ class SupervisedTrainer:
         return {'train_loss': train_loss.avg, 'train_acc': train_acc.avg * 100}
 
     @torch.no_grad()
-    def eval_training(self, epoch=0):
+    def eval_training(self):
+        """Evaluate training
+
+        Returns: dict {test_loss, test_acc}
+
+        """
 
         self.net.eval()
 
-        test_loss = 0.0  # cost function error
+        test_loss = 0.0
         correct = 0.0
         n_imgs = 0.0
         predictions = []
 
         for batch_inputs in self.val_loader:
             images, labels, idxs = batch_inputs
-            #images = norm_batch(images, self.cfg_m)
             images = images.cuda()
             labels = labels.cuda()
 
@@ -241,10 +256,8 @@ def main(cfg: DictConfig):
     logging.info(f'Seed: {cfg.seed}')
 
     # import list of models from the timm library
-    models_list = pd.read_csv('files/contdist_model_list.csv')
+    models_list = pd.read_csv('files/timm_model_list.csv')
 
-    # start run timer
-    t_start = time.time()
     # get teacher and student model names and parameters from config
     model_name, model_type, model_params = get_model(cfg.model_id, models_list)
 
@@ -255,7 +268,7 @@ def main(cfg: DictConfig):
         config['batch_size'] = batch_size
     cfg = parse_cfg(cfg)
 
-    # initialize the distillation trainer
+    # initialize the supervised trainer
     trainer = SupervisedTrainer(cfg, model_name)
 
     st_cfg = {'model_name': model_name, 'model_type': model_type, 'model_params': model_params}

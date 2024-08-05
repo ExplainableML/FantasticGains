@@ -1,0 +1,26 @@
+defaults:
+  - _self_
+  - pretrain@_global_
+
+name: pretrain_infograph
+ffcv_augmentation: default
+seed: 1234
+model_id: 41
+max_epochs: 50
+freeze: True
+mode: Infograph_Finetune
+
+data:
+  dataset: infograph
+  num_classes: 345
+  num_workers: 10
+
+optimizer:
+  batch_size: auto
+  lr: 0.01
+
+wandb:
+  project: Infograph_Pretrain
+
+checkpoint:
+  enabled: False

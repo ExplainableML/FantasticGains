@@ -1,29 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true" showDifferentInSync="false" showNewOnTargetInSync="false">
+  <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
       <paths name="SLURM">
         <serverdata>
           <mappings>
-            <mapping deploy="/mnt/qb/work/akata/aoq877/repsssl" local="$PROJECT_DIR$" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
-      <paths name="slurm">
+      <paths name="SLURM2">
         <serverdata>
           <mappings>
-            <mapping deploy="/mnt/qb/work/akata/aoq877/repsssl" local="$PROJECT_DIR$" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
-      <paths name="slurm-karsten">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/mnt/qb/work/akata/kroth32/Projects/ContDist" local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="slurn-sophia">
+      <paths name="aoq@SLURM">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
@@ -38,6 +31,5 @@
         </serverdata>
       </paths>
     </serverData>
-    <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>

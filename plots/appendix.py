@@ -14,9 +14,9 @@ from aggregate_results import load_wandb_runs
 from dist_between_experts_plots import mscatter
 
 ARCHITECTURES = {'transformer': 'Trafo', 'cnn': 'CNN', 'mlp': 'MLP'}
-APPROACHES = {'KL_Dist': 'KL Distillation', 'XEKL_Dist': 'XE-KL Distillation',
-                'CD_Dist': 'CD Distillation', 'CRD_Dist': 'CRD Distillation',
-                'XEKL+MCL_Dist': 'XE-KL+MCL Distillation', 'KL+MT_Dist': 'KL+DP Distillation', 'KL+MT_u_Dist': 'KL+DP-U Distillation'}
+APPROACHES = {'KL_Dist': 'KL-Dist. Transfer', 'XEKL_Dist': 'XE-KL-Dist. Transfer',
+                'CD_Dist': 'CD Transfer', 'CRD_Dist': 'CRD Transfer',
+                'XEKL+MCL_Dist': 'XE-KL-Dist. + MCL Transfer', 'KL+MT_Dist': 'KL-Dist + DP Transfer', 'KL+MT_u_Dist': 'KL+DP-U Distillation'}
 TEACHERS = [211, 268, 234, 302, 209, 10, 152, 80, 36, 182, 310, 77, 12, 239, 151, 145, 232, 101, 291, 124]
 STUDENTS = {'transformer': [41, 7, 5, 46, 26, 171],
                 'cnn': [33, 131, 235, 132, 42, 130, 48],
@@ -29,11 +29,11 @@ def pos_dist_delta_appendix():
     :Returns: None
     """
     plt.rc('font', family='Times New Roman', size=19)
-    data = pd.read_csv('students_leaderboard.csv', index_col=[0])
+    data = pd.read_csv('data/students_leaderboard.csv', index_col=[0])
     data = data.loc[data['mean_dist_delta'] > -10]
     data = data.loc[[data['student_id'][i] not in [144, 261, 63, 139, 237, 302, 40, 299, 232, 285] for i in data.index]]
 
-    appr_strings = {'XEKL_Dist': 'XE-KL Distillation', 'CD_Dist': 'CD Distillation', 'CRD_Dist': 'CRD Distillation', 'KL+MT_Dist': 'KL+DP Distillation'}
+    appr_strings = {'XEKL_Dist': 'XE-KL-Dist. Transfer', 'CD_Dist': 'CD Transfer', 'CRD_Dist': 'CRD Transfer', 'KL+MT_Dist': 'KL-Dist + DP Transfer'}
     wrapped_labels = ['\n'.join(textwrap.wrap(label, 12)) for label in appr_strings.values()]
 
     fig = plt.figure(figsize=(8, 5))
@@ -151,7 +151,7 @@ def student_feature_importance(appr='KL+MT_Dist'):
     :Returns: None
     """
     plt.rc('font', family='Times New Roman', size=18)
-    data = pd.read_csv('students_leaderboard.csv', index_col=[0])
+    data = pd.read_csv('data/students_leaderboard.csv', index_col=[0])
     data = data.loc[data['approach'] == appr]
 
     shapes = ['o', 'v', 's', 'P', 'v', 's', '<', 'p']
@@ -177,7 +177,7 @@ def student_feature_importance(appr='KL+MT_Dist'):
             plt.plot(performances[arch][p], mean, label=arch, marker=marker_dict[arch], color=colors[arch], alpha=0.8)
             plt.fill_between(performances[arch][p], lower, upper, color=colors[arch], alpha=0.1)
     plt.xlabel('Student Accuracy', fontsize=20)
-    plt.ylabel('Distillation Delta', fontsize=20)
+    plt.ylabel('Knowledge Transfer Delta', fontsize=20)
     plt.title('a) Student Performance', fontsize=22)
 
     plt.subplot(132)
@@ -347,6 +347,8 @@ def cont_distillation_gain_loss(student='pit_b_224', appr='Cont_MT'):
     data = load_wandb_runs('3_continual_distillation', history=True)
     data = data.loc[(data['student_name']==student) & (data['tag']==appr)]
     data = data.loc[[data['contdist'][i]['curriculum'] == 'asc' for i in data.index]]
+    data = data.loc[[data['contdist'][i]['n_teachers'] == 3 for i in data.index]]
+    data = data.loc[data['max_epochs'] == 20]
     k_gain = data['knowledge_gain_hist'].values[0]
     k_loss = data['knowledge_loss_hist'].values[0]
     dist_delta = data['dist_delta_hist'].values[0]
@@ -355,15 +357,15 @@ def cont_distillation_gain_loss(student='pit_b_224', appr='Cont_MT'):
     fig = plt.figure(figsize=(8, 5))
     plt.plot(x, k_gain, label='Knowledge Gain', color='C0', linewidth=3)
     plt.plot(x, k_loss, label='Knowledge Loss', color='C2', linewidth=3)
-    plt.plot(x, dist_delta, label='Distillation Delta', color='C1', linewidth=3)
+    plt.plot(x, dist_delta, label='Knowledge Transfer Delta', color='C1', linewidth=3)
     plt.text(10, 0.65, 'ResMLP-36', horizontalalignment='center', fontsize=19)
     plt.text(30, 0.65, 'SWSL-ResNext', horizontalalignment='center', fontsize=19)
     plt.text(50, 0.65, 'VOLO-D2', horizontalalignment='center', fontsize=19)
     plt.axvline(20, color='black', alpha=0.3)
     plt.axvline(40, color='black', alpha=0.3)
-    plt.xlabel('Distillation Epoch', fontsize=20)
+    plt.xlabel('Transfer Epoch', fontsize=20)
     plt.ylabel('Knowledge Gain/Loss [%]', fontsize=20)
-    plt.ylim(0.3, 3.2)
+    plt.ylim(0.3, 3.7)
     plt.xlim(0, 60)
     plt.legend(loc='upper left', handlelength=0.5)
     fig.tight_layout()
@@ -372,5 +374,7 @@ def cont_distillation_gain_loss(student='pit_b_224', appr='Cont_MT'):
 
 
 if __name__ == "__main__":
+    #pos_dist_delta_appendix()
     #gain_loss_plot('KL_Dist', 'KL+MT_Dist')
-    cont_distillation_gain_loss()
+    #cont_distillation_gain_loss()
+    student_feature_importance()

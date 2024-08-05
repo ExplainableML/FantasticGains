@@ -3,7 +3,6 @@ import timm
 import logging
 
 import torch.nn as nn
-#from solo.utils.misc import make_contiguous
 
 
 def freeze_all_but_linear(model):
@@ -35,9 +34,10 @@ def init_timm_model(name, device, split_linear=False, pretrained=True, return_cf
 
     :param name: name of the model
     :param device: device to put the model on
-    :param split_linear: whether to split the model into a feature extractor and a linear layer
+    :param split_linear: whether to split the model into the feature extractor and linear layer
     :param pretrained: whether to load pretrained weights
     :param return_cfg: whether to return the model config
+    :param num_classes: number of classes
 
     :Returns: model, model config (if return_cfg=True)
     """
@@ -48,14 +48,12 @@ def init_timm_model(name, device, split_linear=False, pretrained=True, return_cf
     if split_linear:
         # initialize feature extractor only
         feature_extractor = timm.create_model(name, pretrained=True, num_classes=0)
-        #make_contiguous(feature_extractor)
         feature_extractor = nn.DataParallel(feature_extractor)
         feature_extractor.to(device, memory_format=torch.channels_last)
         feature_dims = get_feature_dims(feature_extractor, device)
         # initialize linear layer
         linear = nn.Sequential(nn.Linear(feature_dims, cfg_m['num_classes']))
         linear.load_state_dict(linear_state_dict(model))
-        #make_contiguous(linear)
         linear = nn.DataParallel(linear)
         linear.to(device, memory_format=torch.channels_last)
         del model
@@ -64,7 +62,6 @@ def init_timm_model(name, device, split_linear=False, pretrained=True, return_cf
         else:
             return feature_extractor, linear, cfg_m
     else:
-        #make_contiguous(model)
         model = nn.DataParallel(model)
         if return_cfg:
             return model.to(device, memory_format=torch.channels_last), cfg_m

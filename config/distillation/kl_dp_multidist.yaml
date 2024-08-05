@@ -1,0 +1,25 @@
+defaults:
+  - _self_
+  - kl_dp_dist@_global_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+wandb:
+  project: 3_continual_distillation
+
+mode: Multi_DP
+
+ceckpoint:
+  dir: "/mnt/qb/akata/aoq877/trained_models/multidist"
+
+multidist:
+  student_id: 41
+  approach: simple
+  n_teacher: 3
+  t_seed: 1234
+  t_idxs:
+    - 77
+    - 302
+    - 234
+  curriculum: asc
+  sequential: True

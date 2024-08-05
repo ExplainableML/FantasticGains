@@ -1,0 +1,26 @@
+defaults:
+  - _self_
+  - pretrain@_global_
+
+name: pretrain_cars
+ffcv_augmentation: default
+seed: 1234
+model_id: 41
+max_epochs: 50
+freeze: True
+mode: Cars_Finetune
+
+data:
+  dataset: cars
+  num_classes: 196
+  num_workers: 10
+
+optimizer:
+  batch_size: auto
+  lr: 0.01
+
+wandb:
+  project: Cars_Pretrain
+
+checkpoint:
+  enabled: False

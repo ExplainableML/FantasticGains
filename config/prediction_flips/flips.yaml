@@ -1,7 +1,7 @@
 defaults:
   - _self_
-  - augmentations: supervised_symmetric.yaml
-  - wandb: private.yaml
+  - /augmentations/supervised_symmetric@_augmentations_
+  - /wandb/private@_wandb_
   - override hydra/hydra_logging: disabled
   - override hydra/job_logging: disabled
 
@@ -40,6 +40,11 @@ checkpoint:
   frequency: 0
 
 topn: 1
+p_values:
+  - 2
+  - 5
+  - 20
+  - 50
 
 # overwrite PL stuff
 max_epochs: 0

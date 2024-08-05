@@ -2,7 +2,6 @@ import os
 import sys
 
 import hydra
-#from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 
 import wandb
 import time
@@ -16,11 +15,10 @@ from omegaconf import DictConfig, OmegaConf
 from wandb import AlertLevel
 import torch.backends.cudnn as cudnn
 
-#from solo.args.pretrain import parse_cfg
 from pytorch_lightning import seed_everything
 from distillation.data import get_ffcv_val_loader, get_ffcv_train_loader, get_cls_pos_neg, get_contrast_idx, get_cub_loader, get_caltech_loader, get_cars_loader
 from distillation.models import init_timm_model, get_feature_dims
-from distillation.dist_utils import get_val_acc, get_val_preds, get_val_metrics, get_metrics
+from distillation.dist_utils import get_val_acc, get_val_preds, get_val_metrics, get_metrics, get_ensemble_metrics
 from distillation.dist_utils import get_batch_size, AverageMeter, get_flip_masks, norm_batch, parse_cfg, label_smoothing
 from distillation.dist_utils import get_model, get_teacher_student_id, load_pretrain_weights
 from distillation.contrastive.CRDloss import CRDLoss, DistillKL, DistillXE
@@ -128,7 +126,6 @@ class DistillationTrainer(BaseDisitllationTrainer):
             else:  # if single teacher distillation
                 self.teacher, self.cfg_t = init_timm_model(teacher_name, self.device, num_classes=cfg.data.num_classes)
 
-
             self.module_list = None
             self.criterion_list = None
             self.opt = torch.optim.SGD(self.student.parameters(), lr=cfg.optimizer.lr, momentum=cfg.optimizer.momentum,
@@ -136,7 +133,7 @@ class DistillationTrainer(BaseDisitllationTrainer):
 
             # initialize the student-teacher model for multi-teacher distillation
             self.student_teacher, self.cfg_st = init_timm_model(student_name,
-                                                                self.device, num_classes=cfg.data.num_classes) #if 'mt' in cfg.loss.name else (None, None)
+                                                                self.device, num_classes=cfg.data.num_classes)
 
             if 'imagenet' not in cfg.data.dataset:
                 self.student = load_pretrain_weights(self.student, f'{os.path.join(cfg.checkpoint.dir, cfg.data.dataset, student_name + "_lin_ft" if cfg.freeze else student_name)}/{student_name}.pt')
@@ -153,7 +150,6 @@ class DistillationTrainer(BaseDisitllationTrainer):
         # initialize the learning rate scheduler
         if cfg.scheduler.name == 'warmup_cosine':
             self.iter_per_epoch = len(self.train_loader)
-
             self.scheduler = CosineAnnealingLRWarmup(self.opt, cfg.max_epochs * self.iter_per_epoch,
                                                      warmup_iters=(cfg.scheduler.warmup / 100) * cfg.max_epochs * self.iter_per_epoch,
                                                      min_lr=cfg.scheduler.eta_min)
@@ -196,8 +192,8 @@ class DistillationTrainer(BaseDisitllationTrainer):
             # get the teacher and student validation accuracy
             self.student_acc = [get_val_acc(self.student, self.val_loader, self.cfg_s, norm='imagenet' in cfg.data.dataset)]
             if self.multi_teacher:
-                self.teacher_acc = [[get_val_acc(teacher, self.val_loader, cfg_t, norm='imagenet' in cfg.data.dataset)] for teacher, cfg_t in
-                                    zip(self.teachers, self.cfg_t)]
+                self.teacher_acc = [[get_val_acc(teacher, self.val_loader, cfg_t, norm='imagenet' in cfg.data.dataset)]
+                                    for teacher, cfg_t in zip(self.teachers, self.cfg_t)]
             else:
                 self.teacher_acc = [get_val_acc(self.teacher, self.val_loader, self.cfg_t, norm='imagenet' in cfg.data.dataset)]
         self.knowledge_gain = [0]
@@ -217,6 +213,7 @@ class DistillationTrainer(BaseDisitllationTrainer):
                 teacher.eval()
         else:
             self.teacher.eval()
+        # set the student teacher model to eval mode
         if self.student_teacher is not None:
             self.student_teacher.eval()
 
@@ -285,12 +282,14 @@ class DistillationTrainer(BaseDisitllationTrainer):
                 for i in range(imgs.size(0)):
                     outputs = torch.zeros(len(self.teachers) + 1, device=self.device)
                     if '_u' in self.cfg.loss.strat:
+                        # unsupervised multi-teacher masks
                         outputs[0] = torch.max(sp_st[i])
                         for t in range(len(self.teachers)):
                             outputs[t + 1] = torch.max(sp_t[t][i])
                         argmax = torch.argmax(outputs)
                         t_mask[i] = argmax - 1 if argmax > 0 else -1
                     else:
+                        # supervised multi-teacher masks
                         outputs[0] = sp_st[i][labels[i]]
                         for t in range(len(self.teachers)):
                             outputs[t + 1] = sp_t[t][i][labels[i]]
@@ -317,6 +316,7 @@ class DistillationTrainer(BaseDisitllationTrainer):
                 pos_mask, neg_mask, neut_mask = get_flip_masks(out_s, out_t, labels)  # get the prediction flip masks
 
                 if 'dp' in self.cfg.loss.name:  # data partitioning
+                    assert self.cfg.on_flip.pos == 'distill' and self.cfg.on_flip.neg == 'distill' and self.cfg.on_flip.neut == 'distill', 'cannot combine data-partitioning and flip-strategy'
                     t_mask = torch.zeros((imgs.size(0)), device=self.device).to(torch.bool)
                     topk_out_mt = torch.randn((imgs.size(0), self.cfg.loss.k), device=self.device)
                     # get the teacher mask using the most confident strategy
@@ -525,8 +525,8 @@ class DistillationTrainer(BaseDisitllationTrainer):
         self.student_acc.append(s_metrics['student_acc'])
         self.teacher_acc.append(t_acc)
         # log metrics
-        log = {**loss, **s_metrics}
-        log['lr'] = self.scheduler.get_lr()[0] if self.scheduler is not None else self.cfg.optimizer.lr
+        log = {**loss, **s_metrics,
+               'lr': self.scheduler.get_lr()[0] if self.scheduler is not None else self.cfg.optimizer.lr}
         logging.info(f'Log stats: {log}')
         wandb.log(log)
 
@@ -569,6 +569,22 @@ class DistillationTrainer(BaseDisitllationTrainer):
         if e_start >= self.cfg.max_epochs:
             self.eval_student({})
 
+    def fit_ensemble(self):
+        """Perform simple ensemble strategy
+
+        Returns:
+
+        """
+        s_metrics = get_ensemble_metrics(self.student, self.teacher, self.val_loader, self.cfg_s, self.cfg_t, self.zero_preds)
+        logging.info(f'Metrics: {s_metrics}')
+        t_acc = self.teacher_acc[-1]
+        # update accuracies
+        self.student_acc.append(s_metrics['student_acc'])
+        self.teacher_acc.append(t_acc)
+        # log metrics
+        logging.info(f'Log stats: {s_metrics}')
+        wandb.log(s_metrics)
+
 
 @hydra.main(version_base="1.2")
 def main(cfg: DictConfig):
@@ -587,7 +603,7 @@ def main(cfg: DictConfig):
     logging.info(f'Seed: {cfg.seed}')
 
     # import list of models from the timm library
-    models_list = pd.read_csv('files/contdist_model_list.csv')
+    models_list = pd.read_csv('files/timm_model_list.csv')
 
     # start run timer
     t_start = time.time()
@@ -604,10 +620,6 @@ def main(cfg: DictConfig):
 
     # initialize the distillation trainer
     trainer = DistillationTrainer(cfg, teacher_name, student_name)
-    #if 'imagenet' in cfg.data.dataset:
-        # check the accuracies of the teacher and student models
-        #trainer.check_accuracies(models_list, (cfg.teacher_id, cfg.student_id))
-
     st_cfg = {'teacher_name': teacher_name, 'student_name': student_name,
               'ts_diff': trainer.teacher_acc[0] - trainer.student_acc[0],
               'teacher_type': teacher_type, 'student_type': student_type, 'dist_type': f'{teacher_type}>{student_type}',
@@ -640,7 +652,9 @@ def main(cfg: DictConfig):
                    }, step=0)
 
     try:
-        if 'xekl' in cfg.loss.name or 'hinton' in cfg.loss.name:
+        if 'ensemble' in cfg.name:
+            trainer.fit_ensemble()
+        elif 'xekl' in cfg.loss.name or 'hinton' in cfg.loss.name:
             trainer.fit_xekl(e_start, wandb_id)  # perform distillation with cross-entropy and KL divergence
         elif cfg.loss.name in ['crd', 'cd']:
             trainer.fit_contrastive(e_start, wandb_id)  # perform contrastive distillation

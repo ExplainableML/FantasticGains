@@ -40,7 +40,7 @@ def prediction_flips_plot():
     plt.ylim((0, 26))
     plt.minorticks_on()
     plt.grid(alpha=0.3)
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper left', handlelength=0.8)
 
     """
     plt.subplot(122)
@@ -130,17 +130,19 @@ def prediction_flips_sim_plot():
 
     #plt.axhline(0.0, color='red', alpha=0.9, linestyle='dotted', lw=3, label='Average Sim.')
     plt.plot(['Top-2%', 'Top-5%', 'Top-20%', 'Top-50%'], (mean_sims-0.61)/0.61, color='C0', alpha=1, marker='o')
-    plt.fill_between(['Top-2%', 'Top-5%', 'Top-20%', 'Top-50%'], (lower_sims-0.61)/0.61, (upper_sims-0.61)/0.61, alpha=0.3)
+    #plt.fill_between(['Top-2%', 'Top-5%', 'Top-20%', 'Top-50%'], (lower_sims-0.61)/0.61, (upper_sims-0.61)/0.61, alpha=0.3)
     plt.xlabel('Classes with Top-X% of the Compl. Knowledge', fontsize=labels_size)
     plt.ylabel('Difference to Avg. Sim. [%]', fontsize=labels_size)
     #plt.title('Similarity of the Classes Containing \n the Most Positive Prediction Flips', fontsize=labels_size+2)
-    plt.ylim((0.04, 0.20))
+    #plt.ylim((0.04, 0.20))
+    plt.ylim((0.05, 0.13))
     #plt.minorticks_on()
     #plt.xscale('log')
     plt.minorticks_off()
     plt.grid(alpha=0.3)
     #plt.xticks(top_p, ['Top-2%', 'Top-5%', 'Top-20%', 'Top-50%'])
-    plt.yticks([0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18], ['+6%', '+8%', '+10%', '+12%', '+14%', '+16%', '+18%'])
+    #plt.yticks([0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18], ['+6%', '+8%', '+10%', '+12%', '+14%', '+16%', '+18%'])
+    plt.yticks([0.06, 0.08, 0.10, 0.12], ['+6%', '+8%', '+10%', '+12%'])
     #plt.legend()
 
     fig.tight_layout()
@@ -181,9 +183,6 @@ def class_pred_flips_histogramms():
     fig.tight_layout()
     plt.savefig(f'images/pos_flip_histograms.pdf', bbox_inches='tight')
     plt.show()
-
-
-
 
 
 if __name__ == "__main__":

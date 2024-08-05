@@ -294,8 +294,7 @@ def get_cub_loader(cfg, model_cfg, is_train=True):
     """Get CUB dataset loader
 
     :param cfg: Config
-    :param batch_size: Batch size
-    :param num_workers: Number of workers
+    :param model_cfg: Model config
     :param is_train: Training or testing
 
     :Returns: data_loader
@@ -306,9 +305,7 @@ def get_cub_loader(cfg, model_cfg, is_train=True):
             transforms.RandomResizedCrop(model_cfg['input_size'][1]),
             transforms.RandomHorizontalFlip(),
             transforms.RandomRotation(15),
-            #transforms.RandAugment(num_ops=2, magnitude=10),
             transforms.ToTensor(),
-            #transforms.RandomErasing(p=0.25),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
     else:
@@ -377,8 +374,7 @@ def get_caltech_loader(cfg, model_cfg, is_train=True):
     """Get CUB dataset loader
 
     :param cfg: Config
-    :param batch_size: Batch size
-    :param num_workers: Number of workers
+    :param model_cfg: Model config
     :param is_train: Training or testing
 
     :Returns: data_loader
@@ -389,9 +385,7 @@ def get_caltech_loader(cfg, model_cfg, is_train=True):
             transforms.RandomResizedCrop(model_cfg['input_size'][1]),
             transforms.RandomHorizontalFlip(),
             transforms.RandomRotation(15),
-            #transforms.RandAugment(num_ops=2, magnitude=10),
             transforms.ToTensor(),
-            #transforms.RandomErasing(p=0.25),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
     else:
@@ -419,7 +413,7 @@ class DomainNetInfographDataset(ImageFolder):
                     img_id, target = line.strip().split()
                     self.samples.append((os.path.join(root, img_id), int(target)))
         else:
-            with open(os.path.join(root,'infograph',  'infograph_test.txt'), 'r') as f:
+            with open(os.path.join(root, 'infograph',  'infograph_test.txt'), 'r') as f:
                 for line in f:
                     img_id, target = line.strip().split()
                     self.samples.append((os.path.join(root, img_id), int(target)))
@@ -446,8 +440,7 @@ def get_domainnet_loader(cfg, model_cfg, is_train=True):
     """Get CUB dataset loader
 
     :param cfg: Config
-    :param batch_size: Batch size
-    :param num_workers: Number of workers
+    :param model_cfg: Model config
     :param is_train: Training or testing
 
     :Returns: data_loader
@@ -458,9 +451,7 @@ def get_domainnet_loader(cfg, model_cfg, is_train=True):
             transforms.RandomResizedCrop(model_cfg['input_size'][1]),
             transforms.RandomHorizontalFlip(),
             transforms.RandomRotation(15),
-            #transforms.RandAugment(num_ops=2, magnitude=10),
             transforms.ToTensor(),
-            #transforms.RandomErasing(p=0.25),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
     else:
@@ -496,8 +487,7 @@ def get_cars_loader(cfg, model_cfg, is_train=True):
     """Get CUB dataset loader
 
     :param cfg: Config
-    :param batch_size: Batch size
-    :param num_workers: Number of workers
+    :param model_cfg: Model cfg
     :param is_train: Training or testing
 
     :Returns: data_loader
@@ -508,9 +498,7 @@ def get_cars_loader(cfg, model_cfg, is_train=True):
             transforms.RandomResizedCrop(model_cfg['input_size'][1]),
             transforms.RandomHorizontalFlip(),
             transforms.RandomRotation(15),
-            #transforms.RandAugment(num_ops=2, magnitude=10),
             transforms.ToTensor(),
-            #transforms.RandomErasing(p=0.25),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
     else:

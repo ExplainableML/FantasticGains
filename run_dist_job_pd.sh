@@ -27,8 +27,8 @@ val_datapath=$SCRATCH/val_500_0.50_90.ffcv
 ls $SCRATCH
 
 python main_distillation.py \
-        --config-path scripts/distillation \
-        --config-name kl_dp_dist.yaml \
+        --config-path config \
+        --config-name distillation/kl_dp_dist.yaml \
             ++name='xekl-distillation-imagenet' \
             ++ffcv_augmentation='default' \
             ++devices="[0,1,2,3,4,5,6]" \

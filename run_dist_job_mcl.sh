@@ -27,8 +27,8 @@ val_datapath=$SCRATCH/val_500_0.50_90.ffcv
 ls $SCRATCH
 
 python main_distillation.py \
-        --config-path scripts/distillation \
-        --config-name xekl_mcl_dist.yaml \
+        --config-path config \
+        --config-name distillation/xekl_mcl_dist.yaml \
             ++devices="[0, 1]" \
             ++seed=123 \
             ++data.dataset="imagenet_subset" \

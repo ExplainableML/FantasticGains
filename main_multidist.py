@@ -13,9 +13,9 @@ import pandas as pd
 from omegaconf import DictConfig, OmegaConf
 from wandb import AlertLevel
 
-from solo.args.pretrain import parse_cfg
 from main_distillation import DistillationTrainer
-from distillation.dist_utils import get_val_acc, get_batch_size, param_string, get_val_metrics, contdist_grid_search, get_val_preds, soup_student_weights
+from distillation.dist_utils import get_val_acc, get_batch_size, param_string, get_val_metrics, contdist_grid_search, \
+    get_val_preds, soup_student_weights, parse_cfg
 from distillation.models import init_timm_model
 
 
@@ -67,7 +67,7 @@ class MultiDistillationTrainer(DistillationTrainer):
 
         self.checkpoint_path = os.path.join(
             cfg.checkpoint.dir, cfg.data.dataset + f'_ffcv_{cfg.ffcv_dtype}', cfg.ffcv_augmentation, cfg.loss.name,
-            param_string(cfg.loss), f'{student_name}', f'curriculum_{cfg.contdist.curriculum}', f'sequential_{cfg.contdist.sequential}',  f'lr_{cfg.optimizer.lr}',
+            param_string(cfg.loss), f'{student_name}', f'curriculum_{cfg.multidist.curriculum}', f'sequential_{cfg.multidist.sequential}',  f'lr_{cfg.optimizer.lr}',
             f'batch_size_{cfg.optimizer.batch_size}', param_string(cfg.scheduler), f'seed_{cfg.seed}', param_string(cfg.on_flip))
 
     def update_teacher(self, name_new, params_new):
@@ -85,7 +85,8 @@ class MultiDistillationTrainer(DistillationTrainer):
         self.teacher_params = params_new
         self.teacher_acc.append(get_val_acc(self.teacher, self.val_loader, self.cfg_t))
         # update optimizer
-        self.opt = torch.optim.SGD(self.student.parameters(), lr=self.cfg.optimizer.lr, momentum=self.cfg.optimizer.momentum,
+        self.opt = torch.optim.SGD(self.student.parameters(), lr=self.cfg.optimizer.lr,
+                                   momentum=self.cfg.optimizer.momentum,
                                    weight_decay=self.cfg.optimizer.weight_decay)
         # update student teacher
         self.student_teacher.load_state_dict(self.student.state_dict())
@@ -163,27 +164,8 @@ class MultiDistillationTrainer(DistillationTrainer):
                     'teacher_acc_hist': self.teacher_acc},
                    self.checkpoint_path + '/student_checkpoint.pt')
 
-    def check_accuracies(self, models_list, run, thresh=5):
-        """Check if calculated accuracy matches reported accuracy.
-
-        :param models_list: list of models
-        :param run: current run of models
-        :param thresh: threshold for accuracy difference
-
-        :Returns:
-
-        """
-        # ensure that calculated accuracy match the reported accuracy for both models
-        acc_diff_t = abs(self.teacher_acc[0] - models_list["modeltop1"][run[0]])
-        acc_diff_s = abs(self.student_acc[0] - models_list["modeltop1"][run[1]])
-        logging.debug(f'Teacher acc {self.teacher_acc[0]} (diff: {acc_diff_t})')
-        logging.debug(f'Student acc {self.student_acc[0]} (diff: {acc_diff_s})')
-        for (name, diff) in [[self.teacher_name, acc_diff_t], [self.student_name, acc_diff_s]]:
-            assert diff < thresh, f'Calculated accuracy and reported accuracy for {name} by {round(diff, 2)} ' \
-                                  f'\n sudent_cfg {self.cfg_s} \n teacher_cfg {self.cfg_t}'
-
-    def eval_cd_student(self, loss, t, e):
-        """Evaluate student during continuous distillation.
+    def eval_mt_student(self, loss, t, e):
+        """Evaluate student for multi-teacher distillation.
 
         :param loss: loss of current epoch
         :param t: current teacher step
@@ -192,7 +174,7 @@ class MultiDistillationTrainer(DistillationTrainer):
         :Returns:
 
         """
-        if self.cfg.contdist.sequential:
+        if self.cfg.multidist.sequential:
             s_metrics = get_val_metrics(self.student, self.teacher, self.val_loader, self.cfg_s, self.zero_preds,
                                         theta_slow=self.theta_slow, zero_preds_step=self.zero_preds_step)
             t_acc = get_val_acc(self.teacher, self.val_loader, self.cfg_t)
@@ -228,7 +210,7 @@ class MultiDistillationTrainer(DistillationTrainer):
             logging.info('Save to checkpoint')
             self.save_to_checkpoint(e, loss, wandb_id)
             logging.info('Get student validation accuracy')
-            self.eval_cd_student(loss, t, e)
+            self.eval_mt_student(loss, t, e)
 
     def soups_baseline(self):
         """Evaluate student using SOUPS baseline.
@@ -241,7 +223,7 @@ class MultiDistillationTrainer(DistillationTrainer):
         # load soup weights into student
         self.student.load_state_dict(soup_weigts)
         # evaluate student
-        self.eval_cd_student({}, 0, 0)
+        self.eval_mt_student({}, 0, 0)
 
 
 @hydra.main(version_base="1.2")
@@ -256,31 +238,34 @@ def main(cfg: DictConfig):
     OmegaConf.set_struct(cfg, False)
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    logging.info(f'Student ID: {cfg.contdist.student_id}')
+    logging.info(f'Student ID: {cfg.multidist.student_id}')
 
     # import list of models from the timm library
-    models_list = pd.read_csv('files/contdist_model_list.csv')
+    models_list = pd.read_csv('files/timm_model_list.csv')
 
     # start run timer
     t_start = time.time()
 
     # get the student model
-    student_name = models_list['modelname'][cfg.contdist.student_id]
-    student_type = models_list['modeltype'][cfg.contdist.student_id]
-    logging.info(f'Studentname: {student_name} ({student_type})')
+    student_name = models_list['modelname'][cfg.multidist.student_id]
+    student_type = models_list['modeltype'][cfg.multidist.student_id]
+    logging.info(f'Student Name: {student_name} ({student_type})')
 
     # get the teacher models
-    if cfg.contdist.curriculum == 'asc':  # load pre-defined ascending curriculum
-        t_idxs = [77, 302, 234]
-    elif cfg.contdist.curriculum == 'desc':  # load pre-defined descending curriculum
-        t_idxs = [234, 302, 77]
+    if cfg.multidist.t_idxs is not None:
+        t_idxs = cfg.multidist.t_idxs
     else:  # load random teacher curriculum from the list of models
-        np.random.seed(cfg.contdist.t_seed)
-        t_idxs = np.random.choice(models_list.index, cfg.contdist.n_teachers, replace=False)
-    teachers = models_list.loc[t_idxs, 'modelname'].values
-    teacher_types = models_list.loc[t_idxs, 'modeltype'].values
-    teacher_params = models_list.loc[t_idxs, 'modelparams'].values
-    logging.info(f'Teachernames: {teachers}')
+        np.random.seed(cfg.multidist.t_seed)
+        t_idxs = np.random.choice(models_list.index, cfg.multidist.n_teachers, replace=False)
+    teacher_subset = models_list[t_idsx]
+    if cfg.multidist.curriculum == 'asc':
+        teacher_subset = teacher_subset.sort_values(by='modeltop1', ascending=True)
+    elif cfg.multidist.curriculum == 'desc':
+        teacher_subset = teacher_subset.sort_values(by='modeltop1', ascending=False)
+    teachers = teacher_subset['modelname'].values
+    teacher_types = teacher_subset['modeltype'].values
+    teacher_params = teacher_subset['modelparams'].values
+    logging.info(f'Teacher Names: {teachers}')
 
     # get suitable batch size for the student
     if cfg.optimizer.batch_size == 'auto':
@@ -293,9 +278,8 @@ def main(cfg: DictConfig):
     # parse config
     cfg = parse_cfg(cfg)
 
-    if cfg.contdist.sequential:  # initialize sequential trainer
+    if cfg.multidist.sequential:  # initialize sequential trainer
         trainer = MultiDistillationTrainer(cfg, teachers[0], student_name)
-        trainer.check_accuracies(models_list, (t_idxs[0], cfg.contdist.student_id))
     else:  # initialize parallel trainer
         trainer = MultiDistillationTrainer(cfg, teachers, student_name)
 
@@ -305,7 +289,7 @@ def main(cfg: DictConfig):
     config['teacher_types'] = teacher_types
     logging.info(f'Run Config: {config}')
 
-    trainer.student_params = models_list['modelparams'][cfg.contdist.student_id]
+    trainer.student_params = models_list['modelparams'][cfg.multidist.student_id]
     trainer.teacher_params = models_list['modelparams'][t_idxs[0]]
 
     try:  # try to load from checkpoint
@@ -327,10 +311,11 @@ def main(cfg: DictConfig):
         wandb.log({'teacher_acc': trainer.teacher_acc[-1],
                    'student_acc': trainer.student_acc[-1],
                    'ts_diff': trainer.teacher_acc[-1]-trainer.student_acc[-1],
-                   'student_params': models_list['modelparams'][cfg.contdist.student_id],
+                   'student_params': models_list['modelparams'][cfg.multidist.student_id],
                    'teacher_params': models_list['modelparams'][t_idxs[0]]
                    }, step=0)
-    if cfg.contdist.sequential:  # distill the teacher models sequentially
+
+    if cfg.multidist.sequential:  # distill the teacher models sequentially
         for t, teacher in enumerate(teachers):
             logging.info(f'Distillation step {t}, teacher {teacher}')
             # check if teacher has already been distilled

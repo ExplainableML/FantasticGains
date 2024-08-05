@@ -1,7 +1,7 @@
 defaults:
   - _self_
-  - augmentations: supervised_symmetric.yaml
-  - wandb: private.yaml
+  - /augmentations/supervised_symmetric@_augmentations_
+  - /wandb/private@_wandb_
   - override hydra/hydra_logging: disabled
   - override hydra/job_logging: disabled
 
@@ -11,28 +11,17 @@ hydra:
   run:
     dir: .
 
-name: "kl-distillation-imagenet"
+name: "pretrain"
 data:
-  dataset: imagenet_subset
-  n_data: 128117
-  train_path: "/mnt/qb/akata/shared/ffcv_imagenet100/train_500_0.50_90.ffcv"
-  val_path: "/mnt/qb/akata/shared/ffcv_imagenet100/val_500_0.50_90.ffcv"
+  data_path: "/mnt/qb/akata/aoq877/"
   format: "ffcv"
-  num_workers: 9
+  precision: 'half'
 precache: True
 ffcv_augmentation: 'default'
 ffcv_dtype: 'float16'
 
 loss:
-  name: 'xekl'
-  alpha: 1
-  kd_T: 1
-  k: 1000
-  gamma: 0
-  strat: None
-  tau: None
-  N: None
-  label_smoothing: 0
+  name: 'xe'
 
 optimizer:
   name: "SGD"
@@ -42,8 +31,9 @@ optimizer:
   momentum: 0.9
 
 scheduler:
-  name: None
-  warmup: 0
+  name: CosineAnnealingLRwWarmup
+  eta_min: 0.00002
+  warmup: 5
 
 checkpoint:
   enabled: True
@@ -51,16 +41,10 @@ checkpoint:
   frequency: 1
 
 search_id: None
-student_id: 1
-teacher_id: 2
-
-on_flip:
-  pos: 'distill'
-  neg: 'distill'
-  neut: 'distill'
+model_id: 1
 
 # overwrite PL stuff
-max_epochs: 20
+max_epochs: 200
 devices: [0]
 sync_batchnorm: True
 accelerator: "gpu"

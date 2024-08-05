@@ -6,10 +6,10 @@
 #SBATCH --mem=48G
 #SBATCH --time=3-00:00
 #SBATCH -o /mnt/qb/work/akata/aoq877/repsssl/LOGS/kl_dist-j-%j.out
-#SBATCH --array=0,3
+#SBATCH --array=0-32
 
-students=( 41  5   26  131 40  130 214 2   160 )
-teachers=( 239 239 239 239 239 239 239 239 239 )
+students=( 41  5   26  131 40  130 214 2   160 41  5   26  131 40  130 214 2   160 41  5   26  131 40  130 214 2   160 41  5   26  131 40  130 214 2   160 )
+teachers=( 239 239 239 239 239 239 239 239 239 234 234 234 234 234 234 234 234 234 302 302 302 302 302 302 302 302 302 77  77  77  77  77  77  77  77  77  )
 
 echo "${students[$SLURM_ARRAY_TASK_ID]}"
 echo "${teachers[$SLURM_ARRAY_TASK_ID]}"
@@ -28,8 +28,8 @@ val_datapath=$SCRATCH/val_500_0.50_90.ffcv
 ls $SCRATCH
 
 python main_distillation.py \
-        --config-path scripts/distillation \
-        --config-name kl_dist.yaml \
+        --config-path config \
+        --config-name distillation/kl_dist.yaml \
             ++devices="[0,1]" \
             ++data.dataset="imagenet_subset" \
             ++data.num_classes=1000 \
@@ -39,13 +39,13 @@ python main_distillation.py \
             ++data.data_path="/mnt/qb/akata/aoq877/" \
             ++loss.k=1000 \
             ++optimizer.batch_size='auto' \
-            ++wandb.project='2_distill_between_experts' \
+            ++wandb.project='b_ensemble-baseline' \
             ++student_id="${students[$SLURM_ARRAY_TASK_ID]}" \
             ++teacher_id="${teachers[$SLURM_ARRAY_TASK_ID]}" \
-            ++checkpoint.enabled=True \
+            ++checkpoint.enabled=False \
             ++search_id=None \
             ++freeze=False \
-            ++teacher_pretrain='infograph' \
-            ++mode='KL_Dist'
+            ++teacher_pretrain='imagenet' \
+            ++mode='ensemble'
 
 

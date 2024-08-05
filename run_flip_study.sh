@@ -17,17 +17,9 @@ val_datapath=$SCRATCH/val_500_0.50_90.ffcv
 ls $SCRATCH
 
 python main_flips.py \
-          --config-path scripts/prediction_flips \
-          --config-name flips.yaml \
+          --config-path config \
+          --config-name prediction_flips/flips.yaml \
                       ++wandb.project="1-1_class_prediction_flips_study" \
                       ++seed="$SLURM_ARRAY_TASK_ID" \
-                      ++ffcv_augmentation="default" \
-                      ++devices=[0] \
-                      ++data.num_workers=9 \
-                      ++data.format="ffcv" \
-                      ++strategy="dp" \
-                      ++precache=True \
                       ++data.val_path=$val_datapath \
-                      ++optimizer.batch_size='auto' \
-                      ++ffcv_dtype="float16" \
                       ++mode='Sims Test'

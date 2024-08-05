@@ -22,23 +22,13 @@ val_datapath=$SCRATCH/val_500_0.50_90.ffcv
 ls $SCRATCH
 
 python main_contdist.py \
-        --config-path scripts/distillation \
-        --config-name kl_dp_dist.yaml \
+        --config-path config \
+        --config-name distillation/kl_dp_multidist.yaml \
             ++devices="[0,1,2,3,4,5,6,7]" \
             ++data.dataset="imagenet" \
             ++data.num_workers=9 \
             ++data.train_path="$train_datapath" \
             ++data.val_path="$val_datapath" \
-            ++wandb.project='3_continual_distillation' \
-            ++checkpoint.dir="/mnt/qb/akata/aoq877/trained_models/contdist" \
-            ++contdist.student_id="$SLURM_ARRAY_TASK_ID" \
-            ++contdist.approach='simple' \
-            ++contdist.n_teachers=3 \
-            ++contdist.t_seed=1234 \
-            ++contdist.curriculum='asc' \
-            ++contdist.sequential=True \
-            ++max_epochs=20 \
-            ++search_id=None \
-            ++mode='Cont_MT'
+            ++multidist.student_id="$SLURM_ARRAY_TASK_ID" \
 
 

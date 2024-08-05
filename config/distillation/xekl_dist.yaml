@@ -1,0 +1,21 @@
+defaults:
+  - _self_
+  - distillation@_global_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+name: "xekl-distillation-imagenet"
+
+loss:
+  name: 'xekl'
+  alpha: 0.5
+  kd_T: 1
+  k: 1000
+  gamma: 0
+  strat: None
+  tau: None
+  N: None
+
+search_id: None
+student_id: 1
+teacher_id: 2

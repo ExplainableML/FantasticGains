@@ -1,110 +1,91 @@
-# Anyone can teach: Knowledge Transfer between Arbitrary Pretrained Models
+# Fantastic Gains and Where to Find Them: On the Existence and Prospect of General Knowledge Transfer between Any Pretrained Model
 
-Training deep models from scratch is a time-consuming task. Achieving additional gains after performance saturation is difficult without additional data or changes to the training protocol or model architecture.
-Fortunately, the research community has aggregated ever-increasing collections of pretrained models on a range of canonical pretraining datasets varying across factors like architecture, optimization, and augmentations. As a consequence, each model extracts a unique understanding from the data source.
-In this work, we explore how this unique understanding can serve as a teacher to impart complementary knowledge to any other model architecture trained on the same dataset - even if the teacher is much weaker in overall performance - and how model zoos can consequently offer large and freely available resources for additional performance improvements. 
-In particular, across large-scale experimental studies, we investigate the limits and shortcomings of knowledge distillation to transfer such complementary knowledge between arbitrary pretrained models. 
-We further propose extensions from the perspective of continual learning to significantly raise the success rate of effective knowledge transfer between arbitrary model pairs by more than double to nearly $100\%$. 
-Finally, we provide additional insights into knowledge transfer from multiple models.
+This repository contains the codebase for the paper "[Fantastic Gains and Where to Find Them: On the Existence and Prospect of General Knowledge Transfer between Any Pretrained Model](https://arxiv.org/abs/2310.17653)" published at ICLR 2024 as a spotlight paper.
 
-![Project Idea](images/dp_dist_figure.jpg)
+![Figure 3](images/MT-Dist-Figure7.png)
 
-This repository contains all code to reproduce the results of our paper.
+## Introduction
+Training deep networks requires various design decisions regarding for instance
+their architecture, data augmentation, or optimization. In this work, we find these
+training variations to result in networks learning **unique** feature sets from the data.
+Using public model libraries comprising thousands of models trained on canonical
+datasets like ImageNet, we observe that for arbitrary pairings of pretrained models,
+one model extracts significant data context unavailable in the other – independent
+of overall performance. Given **any arbitrary pairing of pretrained models** and no
+external rankings (such as separate test sets, e.g. due to data privacy), we investigate
+if it is possible to transfer such "complementary" knowledge from one model to
+another without performance degradation – a task made particularly difficult as
+additional knowledge can be contained in stronger, equiperformant or weaker
+models. Yet facilitating robust transfer in scenarios agnostic to pretrained model
+pairings would unlock **training guidance, auxiliary gains and knowledge fusion**
+from any model repository without restrictions on model & problem specifics – including from **weaker, lower-performance models**. This work provides a
+first, in-depth exploration on the viability of such **general-purpose knowledge
+transfer**. Across large-scale experiments, we first reveal the shortcomings of
+standard knowledge distillation techniques, and then propose a general extension
+via data partitioning for successful transfer between nearly all pretrained models -
+which can also be done **unsupervised**. Finally, we assess both the scalability and
+impact of model properties on successful model-agnostic knowledge transfer.
 
----
-## Requirements
-+ wandb~=0.13.7
-+ pandas~=1.5.2
-+ numpy~=1.23.5
-+ matplotlib~=3.6.2
-+ seaborn~=0.12.1
-+ torch~=1.13.1
-+ omegaconf~=2.3.0
-+ timm~=0.6.12
-+ wordcloud~=1.8.2.2
-+ scipy~=1.9.3
-+ ffcv~=0.0.3
-+ tqdm~=4.64.1
-+ sklearn~=0.0.post1
-+ scikit-learn~=1.2.0
-+ torchvision~=0.14.1
-+ numba~=0.56.4
-+ fastargs~=1.2.0
+## Features
+ - **Complementary Knowledge Discovery**: Demonstrates the consistent existence of complementary knowledge between any pair of pretrained models, regardless of their performance rankings or architecture types.
+ - **Knowledge Transfer Methodology**: Introduces a novel data partitioning method for general-purpose knowledge transfer, enabling efficient transfer between pretrained models without performance degradation.
+ - **Continual Learning Approach**: Treats the transfer process as a continual learning problem to balance knowledge gain and retention, ensuring robust performance.
+ - **Unsupervised Transfer**: Proposes unsupervised methods for knowledge transfer, eliminating the need for labeled data during the transfer process.
+ - **Multi-Teacher Knowledge Transfer**: Explores the feasibility of transferring knowledge from multiple pretrained models, leveraging various strategies like parallel and sequential transfers. 
+ - **Scalability and Generalization**: Validates the scalability of the proposed methods and their ability to generalize across different datasets and model architectures. 
+ - **Extensive Experiments**: Conducts large-scale experiments to demonstrate the effectiveness of the proposed methods, highlighting significant improvements over traditional knowledge distillation techniques.
 
-Install the requirements with `pip install -r requirements.txt`.
+## Setup
+To get started with the codebase, follow these steps:
+1. Cloning the repository.
+    ```sh
+    git clone https://github.com/username/repository.git
+    cd repository
+    ```
+2. Setting up the environment (install ffcv following the [official documentation](https://ffcv.io/)).
+    ```sh
+    conda create -n ffcv python=3.9 cupy pkg-config libjpeg-turbo opencv pytorch torchvision cudatoolkit=11.6 numba -c conda-forge -c pytorch 
+    conda activate ffcv 
+    conda update ffmpeg 
+    pip install ffcv        
+    pip install -r requirements.txt
+    ```
 
----
-## Consistent Complementary Knowledge
-We analyze the positive prediction flips between teacher and student models to identify complementary knowledge.
+## Usage
+Please find the instructions for replicating the experiments in the paper below. This codebase uses [hydra](https://hydra.cc/docs/intro/) for configuration management. The config files of the experiments can be found in the `config` directory. Make sure to set the correct data paths in the config files before running the experiments.
+Experimental results are logged using [wandb](https://docs.wandb.ai/guides). The wandb configuration can be found in the `config/wandb` directory.
 
-In detail, we assess the following aspects:
-* Share of positive prediction flips between arbitrary pretrained teacher-student pairs
-* Entropy of the positive prediction flips per class
-* Similarity of the classes containing the largest share of positive prediction flips
+**Complementary knowledge discovery** - The experiments for the complementary knowledge discovery can be run using the following command:
+   ```python
+    python main_flips.py --config-path config --config-name prediction_flips/flips.yaml
+   ```
 
-To reproduce the results on the complementary knowledge, execute:
+**Pretraining** - Experiments on datasets other than imagenet require pretraining all student and teacher models. For pretraining please execute the following command:
+   ```python
+    python main_pretrain.py --config-path config --config-name pretrain/pretrain.yaml
+   ```
+
+**General knowledge transfer** - The knowledge transfer experiments can be run using the following command:
+   ```python
+    python main_transfer.py --config-path config --config-name transfer/transfer.yaml
+   ```
+
+**Multi-teacher knowledge transfer** - The multi-teacher knowledge transfer experiments can be run using the following command:
+   ```python
+    python main_multi_teacher.py --config-path config --config-name multi_teacher/multi_teacher.yaml
+   ```
+
+## Citation
+If you find this work useful, please consider citing the following paper:
 ```
-python main_flips.py --config-path scripts/prediction_flips --config-name flips.yaml
+@misc{roth2024fantasticgainsthemexistence,
+      title={Fantastic Gains and Where to Find Them: On the Existence and Prospect of General Knowledge Transfer between Any Pretrained Model}, 
+      author={Karsten Roth and Lukas Thede and Almut Sophia Koepke and Oriol Vinyals and Olivier Hénaff and Zeynep Akata},
+      year={2024},
+      eprint={2310.17653},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2310.17653}, 
+}
 ```
-
----
-## Knowledge Transfer between Arbitrary Model Pairs
-We conduct a large-scale experimental study to assess the limits and shortcomings of knowledge distillation to transfer complementary knowledge between arbitrary pretrained models.
-
-### Implemented Distillation Approaches
-*Vanilla Knowledge Distillation Variants*
-| Name      | Approach      | Parameter Searches | ImageNet<sub>10%</sub> Study |
-| ------------- |---------|-----------|-----------|
-|kl | KL-Divergence Distillation | [:clipboard:](https://api.wandb.ai/links/luth/zly1xoys) | [:clipboard:](https://api.wandb.ai/links/luth/xf7t7vuo) |
-|xekl | KL-Div + Cross-Entropy Distillation | [:clipboard:](https://api.wandb.ai/links/luth/rw7pgynj) [:clipboard:](https://api.wandb.ai/links/luth/y3p0ocpu) [:clipboard:](https://api.wandb.ai/links/luth/slu8k44k) [:clipboard:](https://api.wandb.ai/links/luth/hps8l6uv) | [:clipboard:](https://api.wandb.ai/links/luth/j1zgqoyr) |
-
-*Contrastive Knowledge Distillation*
-| Name      | Approach      | Parameter Searches | ImageNet<sub>10%</sub> Study |
-| ------------- |---------|-----------|-----------|
-|cd | Simple Contrastive Distillation | [:clipboard:](https://api.wandb.ai/links/luth/nqo1rjme) | [:clipboard:](https://api.wandb.ai/links/luth/s9pf6txx) |
-|crd | Contrastive Representation Distillation [:page_facing_up:](https://arxiv.org/abs/1503.02531) | [:clipboard:](https://wandb.ai/luth/2-2_contrastive_distillation/reports/Contrastive-Represenation-Distillation-Approach--VmlldzozMzk0NjE3?accessToken=otkanajhn9dguo9by0xe3y2stl9hv2i7les4u4gqm11z6f4wtke8llq8bknvy7c3) | [:clipboard:](https://api.wandb.ai/links/luth/c4rar9pa) |
-
-*Continual Learning Based Distillation Approaches*
-| Name      | Approach      | Parameter Searches | ImageNet<sub>10%</sub> Study |
-| ------------- |---------|-----------|-----------|
-|xekl_mcl | Momentum-based Weight Interpolation [:page_facing_up:](https://arxiv.org/abs/2211.03186) | [:clipboard:](https://api.wandb.ai/links/luth/16rfkl0g) [:clipboard:](https://api.wandb.ai/links/luth/bi1f65zw) [:clipboard:](https://api.wandb.ai/links/luth/z8xhf7dr) | [:clipboard:](https://wandb.ai/luth/2_distill_between_experts/reports/5-XE-KL-MCL-Distillation-for-Distilling-Knowledge-Between-Experts--Vmlldzo0MDI5Mjk0?accessToken=dmllgtz6ncey8ljil30rvlca73bhdclp98bly8cz1p8kk8xxz5kw40iob06blawe) |
-|kl_dp  | Data Partitioning Distillation | [:clipboard:](https://api.wandb.ai/links/luth/9jvdbrnt) [:clipboard:](https://api.wandb.ai/links/luth/vsino0vn) [:clipboard:](https://api.wandb.ai/links/luth/p2o6o0s9) | [:clipboard:](https://api.wandb.ai/links/luth/yndr09ii) [:clipboard:](https://api.wandb.ai/links/luth/l4jsbcj2) |
-
-### Training
-To reproduce the results on the knowledge transfer between arbitrary model pairs, execute:
-``` 
-python main_distillation.py --config-path scripts/distillation --config-name <approach>_dist.yaml
-```
-where `<approach>` is one of the approaches listed above.
-
-## Knowledge Transfer between Multiple Models
-We extend our proposed KL+DP distillation approach to transfer knowledge from multiple teacher models to a single student model.
-
-For this porpose we assess three different approaches, sequential distillation, parallel distillation and a _Model Soups_ inspired approach.
-
-### Training
-To reproduce the results on the knowledge transfer between multiple models, execute one of the following approaches.
-
-**Sequential Distillation**
-``` 
-python main_contdist.py --config-path scripts/distillation --config-name <approach>.yaml ++contdist.sequential=True
-```
-where `<approach>` is one of the distillation approaches listed above.
-
-**Parallel Distillation**
-```
-python main_contdist.py --config-path scripts/distillation --config-name <approach>.yaml ++contdist.sequential=False
-```
-where `<approach>` is one of the distillation approaches listed above.
-
-**Model Soups Inspired Approach**
-
-This approach requires the individual distillation of the respective student model an all teacher models to be completed first.
-```
-python main_contdist.py --config-path scripts/distillation --config-name <approach>.yaml ++contdist.sequential=False ++mode=Soup
-```
-where `<approach>` is one of the distillation approaches listed above.
-
----
-
 
