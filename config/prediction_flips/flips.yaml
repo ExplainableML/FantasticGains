@@ -13,9 +13,9 @@ hydra:
 
 name: "flips-study-imagenet"
 data:
-  dataset: imagenet100
-  train_path: "/mnt/qb/akata/shared/ffcv_imagenet100/train_500_0.50_90.ffcv"
-  val_path: "/mnt/qb/akata/shared/ffcv_imagenet100/val_500_0.50_90.ffcv"
+  dataset: imagenet
+  train_path: "path/to/train.ffcv"
+  val_path: "path/to/val.ffcv"
   format: "ffcv"
   num_workers: 9
 precache: True

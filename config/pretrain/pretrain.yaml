@@ -13,7 +13,7 @@ hydra:
 
 name: "pretrain"
 data:
-  data_path: "/mnt/qb/akata/aoq877/"
+  data_path: "path/to/data"
   format: "ffcv"
   precision: 'half'
 precache: True
@@ -37,7 +37,7 @@ scheduler:
 
 checkpoint:
   enabled: True
-  dir: "/mnt/qb/akata/aoq877/trained_models/trained_models"
+  dir: "path/to/checkpoints"
   frequency: 1
 
 search_id: None

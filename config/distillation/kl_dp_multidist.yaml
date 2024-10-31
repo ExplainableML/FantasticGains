@@ -10,7 +10,7 @@ wandb:
 mode: Multi_DP
 
 ceckpoint:
-  dir: "/mnt/qb/akata/aoq877/trained_models/multidist"
+  dir: "path/to/checkpoints"
 
 multidist:
   student_id: 41

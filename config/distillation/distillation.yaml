@@ -12,8 +12,8 @@ hydra:
 data:
   dataset: imagenet_subset
   n_data: 128117
-  train_path: "/mnt/qb/akata/shared/ffcv_imagenet100/train_500_0.50_90.ffcv"
-  val_path: "/mnt/qb/akata/shared/ffcv_imagenet100/val_500_0.50_90.ffcv"
+  train_path: "path/to/train.ffcv"
+  val_path: "path/to/val.ffcv"
   format: "ffcv"
   num_workers: 9
 precache: True
@@ -33,7 +33,7 @@ scheduler:
 
 checkpoint:
   enabled: True
-  dir: "/mnt/qb/akata/aoq877/trained_models/trained_models"
+  dir: "path/to/checkpoints"
   frequency: 1
 
 on_flip:
