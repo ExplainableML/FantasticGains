@@ -2,7 +2,7 @@
 
 This repository contains the codebase for the paper "[Fantastic Gains and Where to Find Them: On the Existence and Prospect of General Knowledge Transfer between Any Pretrained Model](https://arxiv.org/abs/2310.17653)" published at ICLR 2024 as a spotlight paper.
 
-![Figure 3](images/MT-Dist-Figure7.png)
+![Figure 3](images/dp_dist_figure.png)
 
 ## Introduction
 Training deep networks requires various design decisions regarding for instance
