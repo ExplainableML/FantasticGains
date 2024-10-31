@@ -10,3 +10,5 @@ plots/prediction_flips
 plots/data
 data/
 archive/
+.idea/
+.venv/
