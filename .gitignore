@@ -1,14 +1,10 @@
 *.pyc
 __pycache__
-JOBS
-LOGS
-wandb
 venv
 files
-plots/images
-plots/prediction_flips
-plots/data
+plots/
 data/
 archive/
 .idea/
 .venv/
+*.sh
